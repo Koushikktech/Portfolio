@@ -1,8 +1,13 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { motion, useScroll, useTransform } from "framer-motion";
 import Link from "next/link";
+import { DeviceTier } from "@/lib/deviceTier";
+
+interface CraftWindow extends Window {
+  __craftImageHovered?: boolean;
+}
 
 interface Project {
   id: string;
@@ -20,11 +25,11 @@ const PROJECTS: Project[] = [
   {
     id: "01",
     title: "Creatorly",
-    category: "Digital Space For Creators",
-    year: "2026 - Ongoing (Work-in-progress)",
-    tech: ["Next.js", "TypeScript", "Tailwind CSS", "Supabase"],
+    category: "AI Digital Space & Commerce",
+    year: "2026 — Ongoing",
+    tech: ["Next.js", "TypeScript", "Tailwind CSS", "Supabase", "Stripe"],
     description:
-      "Creatorly is an AI-powered all-in-one platform for creators, combining the functionality of a link-in-bio tool, digital store, content hub, and audience management system. It enables creators to showcase, sell, and manage everything they create from a single, personalized digital space.",
+      "An AI-augmented digital ecosystem for creators unifying bio-links, digital product storefronts, audience funnels, dynamic component hydration, and instant Stripe Connect checkout workflows.",
     image: "/projects/project1.png",
     video: "/projects/project1.mp4",
     url: "https://creatorly.space/",
@@ -32,11 +37,11 @@ const PROJECTS: Project[] = [
   {
     id: "02",
     title: "NovaSecurity",
-    category: "Vulnerability Detection System",
+    category: "Agentic Vulnerability Analysis",
     year: "2026",
-    tech: ["Next.js", "Tailwind CSS", "LangGraph", "Amazon Nova", "Python"],
+    tech: ["Python", "FastAPI", "Tree-sitter", "LangGraph", "Amazon Nova"],
     description:
-      "NovaSecurity is an AI-powered vulnerability detection system for web applications. Built on a graph-based multi-stage agentic framework, it analyzes code, detects vulnerabilities in real time, and provides fixes to help developers build more secure applications.",
+      "Autonomous vulnerability analysis and taint flow engine. Performs AST parsing with Tree-sitter, directed graph taint flow analysis with NetworkX, multi-agent reasoning with LangGraph and Amazon Nova, and automated patch synthesis with semantic AST diff validation.",
     image: "/projects/project2.png",
     video: "/projects/project2.mp4",
     url: "https://github.com/Koushikktech/NovaSecurity-Backend",
@@ -44,11 +49,11 @@ const PROJECTS: Project[] = [
   {
     id: "03",
     title: "OtakuDynamics",
-    category: "Anime Tracking",
+    category: "Anime Discovery & Watchlist Engine",
     year: "2024",
-    tech: ["React.js", "Firebase", "Tailwind CSS"],
+    tech: ["React.js", "Firebase", "Tailwind CSS", "Jikan API"],
     description:
-      "OtakuDynamics is an anime tracking and discovery platform that enables users to manage watchlists, save favorite series, access detailed anime information, and keep up with the latest anime updates—all from a single, user-friendly dashboard.",
+      "High-performance anime discovery and tracking platform engineered with instant client-side state caching, real-time synchronized watchlists powered by Firebase Firestore, and faceted filtering across 20,000+ indexed titles.",
     image: "/projects/project3.png",
     video: "/projects/project3.mp4",
     url: "https://otaku-dynamics.vercel.app/",
@@ -59,40 +64,107 @@ interface CraftSectionProps {
   activeSlide: number;
   scrollContainerRef?: React.RefObject<HTMLDivElement | null>;
   sectionRef?: React.RefObject<HTMLElement | null>;
+  tier?: DeviceTier;
 }
 
 export default function CraftSection({
   activeSlide,
   scrollContainerRef,
   sectionRef,
+  tier = "high",
 }: CraftSectionProps) {
   const [mediaAspects, setMediaAspects] = useState<Record<string, number>>({});
-  
+  const videoRefs = useRef<(HTMLVideoElement | null)[]>([]);
+  const cardRefs = useRef<(HTMLDivElement | null)[]>([]);
+  const [mobileActiveSlide, setMobileActiveSlide] = useState(0);
+
   // Track scroll exactly within the bounds of this section
   const { scrollYProgress } = useScroll({
     target: sectionRef,
     container: scrollContainerRef || undefined,
-    offset: ["start start", "end end"]
+    offset: ["start start", "end end"],
   });
 
-  // The track contains 3 cards stacked vertically, each taking 100% of the wrapper height.
-  // Track total height = 300% of wrapper.
-  // To scroll from card 1 to card 3, we translate the track up by 2 card heights.
-  // 2 card heights = 2/3 of the track's own height = 66.666%.
-  // scrollYProgress already goes 0 -> 1 correctly within the section bounds
   const trackY = useTransform(scrollYProgress, [0, 1], ["0%", "-66.666%"]);
+
+  // ── Robust IntersectionObserver for Mobile & Natural Scroll Playback ──
+  useEffect(() => {
+    if (typeof window === "undefined" || !("IntersectionObserver" in window)) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const isMobile = window.innerWidth <= 768;
+        entries.forEach((entry) => {
+          const index = cardRefs.current.indexOf(entry.target as HTMLDivElement);
+          if (index === -1) return;
+
+          const videoEl = videoRefs.current[index];
+
+          if (entry.isIntersecting && entry.intersectionRatio >= 0.35) {
+            if (isMobile) {
+              setMobileActiveSlide(index);
+            }
+            if (videoEl) {
+              const playPromise = videoEl.play();
+              if (playPromise !== undefined) {
+                playPromise.catch(() => {});
+              }
+            }
+          } else {
+            // When scrolled off screen, pause to release hardware decoder
+            if (videoEl) {
+              videoEl.pause();
+            }
+          }
+        });
+      },
+      {
+        threshold: [0.15, 0.35, 0.6],
+      }
+    );
+
+    cardRefs.current.forEach((card) => {
+      if (card) observer.observe(card);
+    });
+
+    return () => {
+      observer.disconnect();
+    };
+  }, []);
+
+  // ── Desktop Slide Sync Fallback ──
+  useEffect(() => {
+    if (typeof window !== "undefined" && window.innerWidth > 768) {
+      videoRefs.current.forEach((videoEl, index) => {
+        if (!videoEl) return;
+        if (index === activeSlide) {
+          const playPromise = videoEl.play();
+          if (playPromise !== undefined) {
+            playPromise.catch(() => {});
+          }
+        } else {
+          videoEl.pause();
+        }
+      });
+    }
+  }, [activeSlide]);
 
   // Broadcast image hover state for cursor morphing
   useEffect(() => {
     if (typeof window !== "undefined") {
-      (window as any).__craftImageHovered = false;
+      (window as CraftWindow).__craftImageHovered = false;
     }
     return () => {
       if (typeof window !== "undefined") {
-        (window as any).__craftImageHovered = false;
+        (window as CraftWindow).__craftImageHovered = false;
       }
     };
   }, []);
+
+  const displayedSlide =
+    typeof window !== "undefined" && window.innerWidth <= 768
+      ? mobileActiveSlide
+      : activeSlide;
 
   return (
     <div className="craft-container">
@@ -101,15 +173,15 @@ export default function CraftSection({
         <div className="craft-header-left">
           <div className="craft-title-wrap">
             <h2 className="craft-title">CRAFT</h2>
-            <div className="craft-header-counter">
-              <span className="current">0{activeSlide + 1}</span>
+            <div className="craft-header-counter tabular-nums">
+              <span className="current">0{displayedSlide + 1}</span>
               <span className="sep">/</span>
               <span className="total">0{PROJECTS.length}</span>
             </div>
           </div>
           <div className="craft-subtitle-meta">
             <span>SELECTED WORK</span>
-            <span className="craft-sep">//</span>
+            <span className="craft-sep">{"//"}</span>
             <span>2024 — 2026</span>
           </div>
         </div>
@@ -118,8 +190,14 @@ export default function CraftSection({
       {/* Vertical scrolling project cards */}
       <div className="craft-track-wrapper">
         <motion.div style={{ y: trackY }} className="craft-track">
-          {PROJECTS.map((project) => (
-            <div key={project.id} className="project-card">
+          {PROJECTS.map((project, idx) => (
+            <div
+              key={project.id}
+              ref={(el) => {
+                cardRefs.current[idx] = el;
+              }}
+              className="project-card"
+            >
               {/* Left: Metadata */}
               <div className="project-meta-col">
                 <div className="meta-category-year">
@@ -132,7 +210,7 @@ export default function CraftSection({
                 <p className="project-desc">{project.description}</p>
 
                 <div className="project-tech-stack">
-                  <span className="stack-label">STACK //</span>
+                  <span className="stack-label">STACK {"//"}</span>
                   <span className="tech-tags">{project.tech.join(", ")}</span>
                 </div>
 
@@ -147,7 +225,7 @@ export default function CraftSection({
                 </a>
               </div>
 
-              {/* Right: Project screenshot */}
+              {/* Right: Project presentation with throttled video decoders */}
               <div className="project-frame-col">
                 <a
                   href={project.url}
@@ -162,27 +240,31 @@ export default function CraftSection({
                   }}
                   onMouseEnter={() => {
                     if (typeof window !== "undefined") {
-                      (window as any).__craftImageHovered = true;
+                      (window as CraftWindow).__craftImageHovered = true;
                     }
                   }}
                   onMouseLeave={() => {
                     if (typeof window !== "undefined") {
-                      (window as any).__craftImageHovered = false;
+                      (window as CraftWindow).__craftImageHovered = false;
                     }
                   }}
                 >
                   {project.video ? (
                     <video
+                      ref={(el) => {
+                        videoRefs.current[idx] = el;
+                      }}
                       src={project.video}
-                      autoPlay
                       loop
                       muted
                       playsInline
+                      preload={tier === "low" ? "none" : idx === 0 ? "auto" : "metadata"}
                       className="project-image"
                       style={{
                         objectFit: "contain",
                         width: "100%",
                         height: "100%",
+                        background: "#09090b",
                       }}
                       onLoadedMetadata={(e) => {
                         const video = e.currentTarget;
@@ -195,26 +277,19 @@ export default function CraftSection({
                       }}
                     />
                   ) : (
-                    <img
-                      src={project.image}
-                      alt={project.title}
+                    <div
                       className="project-image"
-                      draggable={false}
                       style={{
-                        objectFit: "contain",
-                        width: "100%",
-                        height: "100%",
+                        background: "#18181b",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        color: "rgba(255,255,255,0.4)",
+                        fontSize: "14px",
                       }}
-                      onLoad={(e) => {
-                        const img = e.currentTarget;
-                        if (img.naturalWidth && img.naturalHeight) {
-                          setMediaAspects((prev) => ({
-                            ...prev,
-                            [project.id]: img.naturalWidth / img.naturalHeight,
-                          }));
-                        }
-                      }}
-                    />
+                    >
+                      {project.title}
+                    </div>
                   )}
                 </a>
               </div>
@@ -223,11 +298,13 @@ export default function CraftSection({
         </motion.div>
       </div>
 
-      {/* Bottom spacer for visual balance */}
+      {/* Bottom bar */}
       <div className="craft-bottom-bar">
-        <Link href="/craft" className="project-link" style={{ borderWidth: '0 0 1.5px 0' }}>
+        <Link href="/craft" className="project-link" style={{ borderWidth: "0 0 1.5px 0" }}>
           <span>VIEW ALL WORKS</span>
-          <span className="arrow" style={{ marginLeft: '6px' }}>→</span>
+          <span className="arrow" style={{ marginLeft: "6px" }}>
+            →
+          </span>
         </Link>
       </div>
 

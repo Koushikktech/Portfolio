@@ -6,25 +6,23 @@ interface SnakeBootScreenProps {
   onComplete: () => void;
 }
 
-const PROJECT_IMAGES = [
-  "/projects/project1.png",
-  "/projects/project2.png",
-  "/projects/project3.png",
-];
-
 const COLS = 12;
 const ROWS = 8;
 const TOTAL_CELLS = COLS * ROWS;
+const CELL_SIZE = 20;
+const GAP = 2;
+const CANVAS_WIDTH = COLS * CELL_SIZE + (COLS - 1) * GAP; // 262px
+const CANVAS_HEIGHT = ROWS * CELL_SIZE + (ROWS - 1) * GAP; // 174px
 
-// Constant speed: the snake takes this many seconds to travel 0→100%
-const DURATION_S = 3.2;
+// Duration in seconds — deliberate, cybernetic boot sequence
+const DURATION_S = 2.8;
 
 interface Point {
   x: number;
   y: number;
 }
 
-// Pre-compute the serpentine path once at module level
+// Pre-compute serpentine path
 const PATH: Point[] = [];
 for (let y = 0; y < ROWS; y++) {
   if (y % 2 === 0) {
@@ -34,36 +32,45 @@ for (let y = 0; y < ROWS; y++) {
   }
 }
 
-// Pre-compute a flat lookup: grid index (row * COLS + col) → path index
+// Map grid index (y * COLS + x) -> path index
 const GRID_TO_PATH = new Int16Array(TOTAL_CELLS).fill(-1);
 PATH.forEach((pt, i) => {
   GRID_TO_PATH[pt.y * COLS + pt.x] = i;
 });
 
+/**
+ * SnakeBootScreen — Ultra-lightweight batched Canvas 2D overlay
+ */
 export default function SnakeBootScreen({ onComplete }: SnakeBootScreenProps) {
   const overlayRef = useRef<HTMLDivElement>(null);
-  const gridRef = useRef<HTMLDivElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const statusTextRef = useRef<HTMLSpanElement>(null);
   const onCompleteRef = useRef(onComplete);
-  onCompleteRef.current = onComplete;
+
+  useEffect(() => {
+    onCompleteRef.current = onComplete;
+  }, [onComplete]);
 
   const handleComplete = useCallback(() => {
     onCompleteRef.current();
   }, []);
 
   useEffect(() => {
-    const grid = gridRef.current;
-    if (!grid) return;
-    const cells = grid.querySelectorAll<HTMLDivElement>(".grid-cell");
-    if (cells.length !== TOTAL_CELLS) return;
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d", { alpha: true });
+    if (!ctx) return;
 
-    // ── Mutable animation state ──
+    // Handle high-DPI crisp rendering
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    canvas.width = CANVAS_WIDTH * dpr;
+    canvas.height = CANVAS_HEIGHT * dpr;
+    ctx.scale(dpr, dpr);
+
     let lastTime = performance.now();
-    const startTime = performance.now();
     let completed = false;
     let frameId: number;
-    let assetsReady = false;
 
-    // Constant linear speed — units per second
     const SPEED = 100 / DURATION_S;
     let smoothProgress = 0;
 
@@ -74,61 +81,74 @@ export default function SnakeBootScreen({ onComplete }: SnakeBootScreenProps) {
       const dt = Math.min(rawDt, 0.05);
       lastTime = now;
 
-      // Constant speed — same pace from start to finish
-      // Cap at 95% if assets haven't loaded yet, so it waits gracefully
-      const ceiling = assetsReady ? 100 : 95;
-      if (smoothProgress < ceiling) {
-        smoothProgress += SPEED * dt;
-        smoothProgress = Math.min(smoothProgress, ceiling);
+      smoothProgress += SPEED * dt;
+
+      // Update status text percentage with zero React re-renders
+      if (statusTextRef.current) {
+        const pct = Math.min(100, Math.floor(smoothProgress));
+        statusTextRef.current.textContent =
+          pct < 100 ? `INITIALIZING SYSTEM... ${pct}%` : "SYSTEM READY";
       }
 
-      // ── Derive snake geometry ──
-      const t = smoothProgress / 100;
+      // ── Snake calculations ──
+      const t = Math.min(1, smoothProgress / 100);
       const headIdx = Math.floor(t * (PATH.length - 1));
-      const maxLen = 24;
-      const snakeLen = Math.max(2, Math.round(t * (maxLen - 2)) + 2);
+      const maxLen = 22;
+      const snakeLen = Math.max(3, Math.round(t * (maxLen - 3)) + 3);
       const tailIdx = Math.max(0, headIdx - snakeLen + 1);
       const segmentCount = headIdx - tailIdx + 1;
 
-      // ── Paint every cell in a single pass ──
-      for (let i = 0; i < TOTAL_CELLS; i++) {
-        const pathIdx = GRID_TO_PATH[i];
-        const cell = cells[i];
+      // ── Single batched Canvas Draw ──
+      ctx.clearRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
 
-        if (pathIdx >= tailIdx && pathIdx <= headIdx) {
-          const relPos =
-            segmentCount > 1
-              ? (pathIdx - tailIdx) / (segmentCount - 1)
-              : 1;
-          const opacity = 0.08 + Math.pow(relPos, 2.2) * 0.92;
-
-          cell.style.opacity = String(opacity);
-          cell.style.background = "#ffffff";
-          cell.style.borderColor = `rgba(255,255,255,${0.3 + relPos * 0.7})`;
-
-          if (pathIdx === headIdx) {
-            cell.style.boxShadow =
-              "0 0 12px rgba(255,255,255,0.9), 0 0 4px rgba(255,255,255,0.5)";
-          } else {
-            const glowStrength = relPos * 0.5;
-            cell.style.boxShadow = `0 0 ${6 * glowStrength}px rgba(255,255,255,${glowStrength * 0.6})`;
+      // Pass 1: Inactive background grid cells in a single path
+      ctx.beginPath();
+      for (let r = 0; r < ROWS; r++) {
+        for (let c = 0; c < COLS; c++) {
+          const cellIndex = r * COLS + c;
+          const pathIdx = GRID_TO_PATH[cellIndex];
+          if (pathIdx < tailIdx || pathIdx > headIdx) {
+            const x = c * (CELL_SIZE + GAP);
+            const y = r * (CELL_SIZE + GAP);
+            ctx.roundRect(x, y, CELL_SIZE, CELL_SIZE, 3);
           }
-        } else {
-          cell.style.opacity = "1";
-          cell.style.background = "rgba(255,255,255,0.015)";
-          cell.style.borderColor = "rgba(255,255,255,0.03)";
-          cell.style.boxShadow = "none";
         }
       }
+      ctx.fillStyle = "rgba(255, 255, 255, 0.03)";
+      ctx.fill();
+      ctx.strokeStyle = "rgba(255, 255, 255, 0.05)";
+      ctx.lineWidth = 1;
+      ctx.stroke();
 
-      // ── Completion ──
+      // Pass 2: Snake cells with smooth alpha gradient
+      for (let pIdx = tailIdx; pIdx <= headIdx; pIdx++) {
+        const pt = PATH[pIdx];
+        if (!pt) continue;
+        const x = pt.x * (CELL_SIZE + GAP);
+        const y = pt.y * (CELL_SIZE + GAP);
+
+        const relPos = segmentCount > 1 ? (pIdx - tailIdx) / (segmentCount - 1) : 1;
+        const opacity = 0.15 + Math.pow(relPos, 2.0) * 0.85;
+
+        ctx.fillStyle = `rgba(255, 255, 255, ${opacity})`;
+        ctx.strokeStyle = `rgba(255, 255, 255, ${0.3 + relPos * 0.7})`;
+
+        ctx.beginPath();
+        ctx.roundRect(x, y, CELL_SIZE, CELL_SIZE, 3);
+        ctx.fill();
+        ctx.stroke();
+      }
+
+      // ── Completion trigger ──
       if (smoothProgress >= 99.5 && !completed) {
         completed = true;
-
+        if (statusTextRef.current) {
+          statusTextRef.current.textContent = "SYSTEM READY";
+        }
         setTimeout(() => {
           overlayRef.current?.classList.add("fade-out");
-          setTimeout(() => handleComplete(), 600);
-        }, 400);
+          setTimeout(() => handleComplete(), 550);
+        }, 220);
         return;
       }
 
@@ -137,63 +157,49 @@ export default function SnakeBootScreen({ onComplete }: SnakeBootScreenProps) {
 
     frameId = requestAnimationFrame(animate);
 
-    // ── Asset Preloader (runs silently in background) ──
-    if (typeof document !== "undefined" && document.fonts) {
-      document.fonts.ready
-        .then(() => {})
-        .catch(() => {});
-    }
-
-    let loaded = 0;
-    const total = PROJECT_IMAGES.length;
-    PROJECT_IMAGES.forEach((src) => {
-      const img = new Image();
-      img.src = src;
-      const done = () => {
-        loaded++;
-        if (loaded === total) {
-          assetsReady = true;
-        }
-      };
-      img.onload = done;
-      img.onerror = done;
-    });
-
-    // Fallback: if assets somehow take too long, unlock after 8s
-    const fallbackTimer = setTimeout(() => {
-      assetsReady = true;
-    }, 8000);
-
     return () => {
       cancelAnimationFrame(frameId);
-      clearTimeout(fallbackTimer);
     };
   }, [handleComplete]);
 
+  // Click or touch to skip boot animation immediately
+  const handleQuickSkip = () => {
+    overlayRef.current?.classList.add("fade-out");
+    setTimeout(() => handleComplete(), 300);
+  };
+
   return (
-    <div ref={overlayRef} className="snake-screen-overlay">
+    <div
+      ref={overlayRef}
+      className="snake-screen-overlay"
+      onClick={handleQuickSkip}
+      title="Click anywhere to skip"
+    >
       <div className="snake-loader-container">
-        <div ref={gridRef} className="snake-grid">
-          {Array.from({ length: ROWS }).map((_, r) => (
-            <div key={r} className="grid-row">
-              {Array.from({ length: COLS }).map((_, c) => (
-                <div
-                  key={c}
-                  className="grid-cell"
-                  style={{
-                    animationDelay: `${(r * COLS + c) * 12}ms`,
-                  }}
-                />
-              ))}
-            </div>
-          ))}
+        <div
+          className="snake-grid"
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: "8px",
+          }}
+        >
+          <canvas
+            ref={canvasRef}
+            style={{
+              width: `${CANVAS_WIDTH}px`,
+              height: `${CANVAS_HEIGHT}px`,
+              display: "block",
+            }}
+          />
         </div>
 
         <div className="loader-info">
-          <span className="status-text">Loading..</span>
+          <span ref={statusTextRef} className="status-text">INITIALIZING SYSTEM... 0%</span>
+          <span style={{ fontSize: "9px", opacity: 0.6 }}>TAP TO SKIP</span>
         </div>
       </div>
     </div>
   );
 }
-

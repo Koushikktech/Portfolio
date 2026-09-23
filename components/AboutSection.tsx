@@ -48,7 +48,10 @@ export default function AboutSection({
   ];
 
   return (
-    <section id="about" className="about-section">
+    <section
+      id="about"
+      className={`about-section ${isEmbedded ? "is-embedded" : ""}`}
+    >
       {/* Section divider */}
       <div className="about-divider">
         <div className="about-divider-line" />
@@ -70,7 +73,7 @@ export default function AboutSection({
             </div>
             <p className="craft-subtitle-meta" style={{ marginTop: "12px" }}>
               <span>Full-Stack Engineer • AI Automation</span>
-              <span className="craft-sep">//</span>
+              <span className="craft-sep">{"//"}</span>
               <span>BIOGRAPHY & SKILLS</span>
             </p>
           </div>
@@ -80,9 +83,9 @@ export default function AboutSection({
         <div className="about-grid">
           {/* Biography */}
           <div className="about-bio">
-            <h3 className="about-section-label">THE PROFILE //</h3>
+            <h3 className="about-section-label">THE PROFILE {"//"}</h3>
             <p className="about-bio-main">
-              I'm Koushik, a Full-Stack Developer and AI Automation specialist
+              I&apos;m Koushik, a Full-Stack Developer and AI Automation specialist
               who enjoys building clean solutions that actually ship and
               building systems for businesses.
             </p>
@@ -94,8 +97,8 @@ export default function AboutSection({
               and freelance client work.
             </p>
             <p className="about-bio-sub">
-              Right now I'm focused on AI and automation, building tools that
-              actually do useful things, not just demos. I'm also working on my
+              Right now I&apos;m focused on AI and automation, building tools that
+              actually do useful things, not just demos. I&apos;m also working on my
               own projects and always open to interesting collaborations.
             </p>
           </div>
@@ -161,7 +164,7 @@ export default function AboutSection({
             paddingBottom: "12px",
           }}
         >
-          THE TECH STACK & TOOLS //
+          THE TECH STACK & TOOLS {"//"}
         </h3>
 
         <div className="about-skills-wrapper">

@@ -1,7 +1,6 @@
 "use client";
 
 import Navbar from "@/components/Navbar";
-import CustomCursor from "@/components/CustomCursor";
 
 interface WorkExperience {
   role: string;
@@ -32,11 +31,28 @@ const EXPERIENCES: WorkExperience[] = [
   },
 ];
 
+const SKILL_CATEGORIES = [
+  {
+    category: "Languages",
+    items: ["TypeScript", "JavaScript (ESNext)", "Python", "C++", "SQL", "HTML5/CSS3"],
+  },
+  {
+    category: "Frameworks & Libraries",
+    items: ["Next.js (App Router)", "React", "Node.js", "Express", "Tailwind CSS", "Three.js / React Three Fiber"],
+  },
+  {
+    category: "Databases & Cloud",
+    items: ["PostgreSQL", "Supabase", "Redis", "Firebase", "AWS (EC2, S3)", "Docker"],
+  },
+  {
+    category: "AI & Engineering Tools",
+    items: ["LangGraph", "LangChain", "Amazon Nova", "Git/GitHub", "Vercel", "Turbopack"],
+  },
+];
+
 export default function CVPage() {
   return (
     <>
-      <CustomCursor />
-      
       {/* Navbar wrapper */}
       <div
         style={{
@@ -44,25 +60,27 @@ export default function CVPage() {
           top: 0,
           left: 0,
           right: 0,
+          bottom: 0,
           zIndex: 100,
           pointerEvents: "none",
-        }}
+          ["--scroll-progress" as string]: 1,
+        } as React.CSSProperties}
       >
         <div style={{ pointerEvents: "auto" }}>
           <Navbar />
         </div>
       </div>
 
-      <div className="subpage-root" style={{ background: "#09090b", minHeight: "100vh", color: "#ffffff", padding: "8vh 10% 6vh 18%" }}>
+      <div className="subpage-root cv-container">
         {/* Header */}
-        <header className="craft-header" style={{ marginBottom: "60px", display: "flex", justifyContent: "space-between", alignItems: "flex-end" }}>
-          <div className="craft-header-left">
+        <header className="cv-header">
+          <div className="cv-header-left">
             <div className="craft-title-wrap">
-              <h1 className="craft-title" style={{ fontSize: "clamp(2.5rem, 5vw, 4rem)" }}>CURRICULUM VITAE</h1>
+              <h1 className="cv-title">CURRICULUM VITAE</h1>
             </div>
-            <p className="craft-subtitle-meta" style={{ marginTop: "12px" }}>
+            <p className="cv-subtitle-meta">
               <span>WORK EXPERIENCE & ACADEMIC BACKGROUND</span>
-              <span className="craft-sep">//</span>
+              <span className="craft-sep">{"//"}</span>
               <span>2024 — 2026</span>
             </p>
           </div>
@@ -70,17 +88,8 @@ export default function CVPage() {
           <a 
             href="/cv.pdf" 
             download
-            className="project-link" 
-            style={{ 
-              fontSize: "12px", 
-              fontWeight: "650", 
-              display: "inline-flex", 
-              alignItems: "center", 
-              gap: "6px",
-              paddingBottom: "4px",
-              borderBottom: "1.5px solid #bfff00",
-              color: "#bfff00"
-            }}
+            className="cv-download-btn"
+            aria-label="Download Curriculum Vitae in PDF format"
           >
             <span>DOWNLOAD PDF CV</span>
             <span className="arrow">↓</span>
@@ -88,34 +97,24 @@ export default function CVPage() {
         </header>
 
         {/* Work experience section */}
-        <section style={{ marginBottom: "60px" }}>
-          <h2 style={{ fontSize: "12px", color: "#bfff00", fontWeight: "650", letterSpacing: "0.15em", textTransform: "uppercase", marginBottom: "32px", borderBottom: "1px solid rgba(255,255,255,0.06)", paddingBottom: "12px" }}>
-            PROFESSIONAL EXPERIENCE //
+        <section className="cv-section">
+          <h2 className="cv-section-title">
+            PROFESSIONAL EXPERIENCE {"//"}
           </h2>
 
-          <div style={{ display: "flex", flexDirection: "column", gap: "40px" }}>
+          <div className="cv-list">
             {EXPERIENCES.map((exp, idx) => (
-              <div 
-                key={idx}
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: "250px 1fr",
-                  gap: "24px"
-                }}
-              >
-                <div>
-                  <h3 style={{ fontSize: "18px", fontWeight: "700", color: "#ffffff" }}>{exp.role}</h3>
-                  <span style={{ fontSize: "13px", color: "rgba(255,255,255,0.45)", display: "block", marginTop: "4px" }}>
-                    {exp.company}
-                  </span>
-                  <span style={{ fontSize: "11px", color: "rgba(255,255,255,0.3)", display: "block", marginTop: "8px", fontFamily: "monospace" }}>
-                    {exp.period}
-                  </span>
+              <div key={idx} className="cv-entry-grid">
+                <div className="cv-entry-meta">
+                  <h3 className="cv-role">{exp.role}</h3>
+                  <span className="cv-company">{exp.company}</span>
+                  <span className="cv-period">{exp.period}</span>
                 </div>
-                <ul style={{ listStyle: "none", display: "flex", flexDirection: "column", gap: "12px" }}>
+                <ul className="cv-points">
                   {exp.points.map((pt, pIdx) => (
-                    <li key={pIdx} style={{ fontSize: "14px", color: "rgba(255,255,255,0.65)", lineHeight: "1.6", fontWeight: "300" }}>
-                      • {pt}
+                    <li key={pIdx} className="cv-point-item">
+                      <span className="cv-bullet">•</span>
+                      <span>{pt}</span>
                     </li>
                   ))}
                 </ul>
@@ -125,26 +124,46 @@ export default function CVPage() {
         </section>
 
         {/* Education section */}
-        <section>
-          <h2 style={{ fontSize: "12px", color: "#bfff00", fontWeight: "650", letterSpacing: "0.15em", textTransform: "uppercase", marginBottom: "32px", borderBottom: "1px solid rgba(255,255,255,0.06)", paddingBottom: "12px" }}>
-            EDUCATION & CERTIFICATIONS //
+        <section className="cv-section">
+          <h2 className="cv-section-title">
+            EDUCATION & CERTIFICATIONS {"//"}
           </h2>
 
-          <div style={{ display: "flex", flexDirection: "column", gap: "32px" }}>
-            <div style={{ display: "grid", gridTemplateColumns: "250px 1fr", gap: "24px" }}>
-              <div>
-                <h3 style={{ fontSize: "16px", fontWeight: "700", color: "#ffffff" }}>Bachelor of Technology</h3>
-                <span style={{ fontSize: "13px", color: "rgba(255,255,255,0.45)", display: "block", marginTop: "4px" }}>
-                  Computer Science & Engineering
-                </span>
-                <span style={{ fontSize: "11px", color: "rgba(255,255,255,0.3)", display: "block", marginTop: "8px", fontFamily: "monospace" }}>
-                  2022 - 2026
-                </span>
+          <div className="cv-list">
+            <div className="cv-entry-grid">
+              <div className="cv-entry-meta">
+                <h3 className="cv-role">Bachelor of Technology</h3>
+                <span className="cv-company">Computer Science & Engineering</span>
+                <span className="cv-period">2022 — 2026</span>
               </div>
-              <p style={{ fontSize: "14px", color: "rgba(255,255,255,0.65)", lineHeight: "1.6", fontWeight: "300" }}>
-                Focused on distributed systems, database management, artificial intelligence, and web technologies. Maintained top-tier academic grades.
-              </p>
+              <div className="cv-points">
+                <p className="cv-point-item" style={{ listStyle: "none" }}>
+                  Focused on distributed systems, database management, artificial intelligence, and web technologies. Maintained top-tier academic grades.
+                </p>
+              </div>
             </div>
+          </div>
+        </section>
+
+        {/* Core Competencies & Skills section */}
+        <section className="cv-section">
+          <h2 className="cv-section-title">
+            CORE COMPETENCIES & EXPERTISE {"//"}
+          </h2>
+
+          <div className="cv-skills-grid">
+            {SKILL_CATEGORIES.map((cat, idx) => (
+              <div key={idx} className="cv-skill-category">
+                <h3 className="cv-skill-cat-title">{cat.category}</h3>
+                <div className="cv-skill-pill-list">
+                  {cat.items.map((item, iIdx) => (
+                    <span key={iIdx} className="cv-skill-pill">
+                      {item}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            ))}
           </div>
         </section>
       </div>

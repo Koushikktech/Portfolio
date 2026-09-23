@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useRef, useMemo, useEffect, useState } from "react";
+import React, { useRef, useMemo, useEffect, useState, Suspense } from "react";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import {
   Text,
@@ -10,7 +10,16 @@ import {
   Line,
 } from "@react-three/drei";
 import * as THREE from "three";
+import { DeviceTier } from "@/lib/deviceTier";
 
+interface CustomWindow extends Window {
+  bubbleHoverProgress?: number;
+  bubbleHoldProgress?: number;
+  isBubbleHovered?: boolean;
+  bubbleX?: number;
+  bubbleY?: number;
+  __craftImageHovered?: boolean;
+}
 
 /* ────────────────────────────────────────────────────────
    Shared interaction state (mutable ref, no re-renders)
@@ -23,23 +32,22 @@ interface InteractionData {
   distance: number;
   isNear: boolean;
   isHovered: boolean;
-  hoverProgress: number; // 0 → 1  (magnetic edge → bubble edge)
-  smoothHoverProgress: number; // smoothed version for rendering
+  hoverProgress: number;
+  smoothHoverProgress: number;
   isMouseDown: boolean;
   holdProgress: number;
   isPopped: boolean;
-  hasMoved: boolean; // true once the real mouse has moved at least once
-  isInteractive: boolean; // true when hovering over links/buttons or pointer cursor elements
+  hasMoved: boolean;
+  isInteractive: boolean;
 }
 
-/* ────────────────────────────────────────────────────────
-   BubbleMesh — vertex deformation + material morphing
-   ──────────────────────────────────────────────────────── */
 interface BubbleMeshProps {
   interactionRef: React.MutableRefObject<InteractionData>;
+  isVisible: boolean;
+  tier: DeviceTier;
 }
 
-function BubbleMesh({ interactionRef }: BubbleMeshProps) {
+function BubbleMesh({ interactionRef, isVisible, tier }: BubbleMeshProps) {
   const meshRef = useRef<THREE.Mesh>(null);
   const groupRef = useRef<THREE.Group>(null);
 
@@ -47,24 +55,100 @@ function BubbleMesh({ interactionRef }: BubbleMeshProps) {
   const smoothPop = useRef(0);
   const isPoppedState = useRef(false);
   const reformTimer = useRef(0);
-  const smoothMouseDir = useRef(new THREE.Vector3(0, 0, 1)); // smoothed ripple direction
+  const smoothMouseDir = useRef(new THREE.Vector3(0, 0, 1));
 
-  // Persistent vectors to avoid per-frame allocations (GC pressure)
+  // Persistent vectors to avoid per-frame allocations
   const _vecV = useRef(new THREE.Vector3());
   const _vecRawDir = useRef(new THREE.Vector3());
   const _vecBpos = useRef(new THREE.Vector3());
   const _vecTn = useRef(new THREE.Vector3());
-  // Cached DOM element
+
   const scrollRootRef = useRef<Element | null>(null);
 
-  const originalPositions = useMemo(() => {
-    const geo = new THREE.IcosahedronGeometry(0.85, 48);
-    return geo.attributes.position.clone();
+  // Smooth UV Sphere Geometry: 64 width segments × 48 height segments = 3,185 vertices
+  // Pre-deformed at construction time so it is NEVER rendered as a raw sphere
+  const { geometry, originalPositions, baseNormals, count } = useMemo(() => {
+    const geo = new THREE.SphereGeometry(0.85, 64, 48);
+    const pos = geo.attributes.position;
+    const vertexCount = pos.count;
+    const orig = new Float32Array(vertexCount * 3);
+    const norms = new Float32Array(vertexCount * 3);
+    const posArray = pos.array as Float32Array;
+
+    const rot = new THREE.Euler(0, 0, 0.15);
+    const tn = new THREE.Vector3();
+
+    for (let i = 0; i < vertexCount; i++) {
+      const i3 = i * 3;
+      const x = pos.getX(i);
+      const y = pos.getY(i);
+      const z = pos.getZ(i);
+      orig[i3] = x;
+      orig[i3 + 1] = y;
+      orig[i3 + 2] = z;
+
+      const len = Math.hypot(x, y, z) || 1;
+      const nx = x / len;
+      const ny = y / len;
+      const nz = z / len;
+      norms[i3] = nx;
+      norms[i3 + 1] = ny;
+      norms[i3 + 2] = nz;
+
+      // Multi-octave organic liquid harmonics (initial state at t = 0)
+      const df =
+        Math.sin(nx * 6.5 + ny * 3.5) * 0.4 +
+        Math.cos(ny * 7.5 - nz * 5.0) * 0.4 +
+        Math.sin(nz * 8.5 + nx * 2.5) * 0.35 +
+        Math.cos(nx * 5.5 - ny * 7.0) * 0.3 +
+        Math.sin(nx * 10.0 + nz * 6.0) * 0.25 +
+        Math.cos(ny * 12.0 + nx * 4.5) * 0.2;
+
+      tn.set(nx, ny, nz).applyEuler(rot);
+      const wNz = tn.z;
+      const fade = wNz > 0 ? Math.pow(wNz, 1.2) : 0;
+
+      let disp = 0;
+      if (df < 0) {
+        disp = -Math.pow(-df, 1.05) * 0.20 * fade;
+      } else {
+        disp = Math.pow(df, 1.05) * 0.055;
+      }
+
+      const breath =
+        Math.sin(nx * 5.0) * 0.003 +
+        Math.cos(ny * 4.5) * 0.003;
+
+      const total = disp + breath;
+
+      posArray[i3] = x + nx * total;
+      posArray[i3 + 1] = y + ny * total;
+      posArray[i3 + 2] = z + nz * total;
+    }
+
+    pos.needsUpdate = true;
+    geo.computeVertexNormals();
+
+    return {
+      geometry: geo,
+      originalPositions: orig,
+      baseNormals: norms,
+      count: vertexCount,
+    };
   }, []);
 
+  useEffect(() => {
+    return () => {
+      geometry.dispose();
+    };
+  }, [geometry]);
+
   useFrame((state, delta) => {
+    // Zero computation when hero is scrolled out of view
+    if (!isVisible) return;
+
     const time = state.clock.elapsedTime;
-    const dt = Math.min(delta, 0.05); // cap to prevent large jumps on tab-switch
+    const dt = Math.min(delta, 0.05);
 
     /* ── 1. Project bubble center → screen coords ── */
     if (groupRef.current) {
@@ -83,12 +167,10 @@ function BubbleMesh({ interactionRef }: BubbleMeshProps) {
       const dist = Math.sqrt(dx * dx + dy * dy);
       interactionRef.current.distance = dist;
 
-      // Radii — magnetic zone starts beyond the bubble visual edge
       const vh = state.size.height;
-      const hoverR = vh * 0.15; // bubble hover zone (visual edge + small buffer)
-      const magnetR = vh * 0.45; // generous magnetic field for fluid approach feel
+      const hoverR = vh * 0.15;
+      const magnetR = vh * 0.45;
 
-      // Disable bubble interactions when scrolled away to Craft section
       if (!scrollRootRef.current && typeof document !== "undefined") {
         scrollRootRef.current = document.querySelector(".scroll-root");
       }
@@ -96,16 +178,13 @@ function BubbleMesh({ interactionRef }: BubbleMeshProps) {
       const isHero = scrollTop < 100;
 
       const near = isHero && dist < magnetR && interactionRef.current.hasMoved;
-      const hovered =
-        isHero && dist < hoverR && interactionRef.current.hasMoved;
+      const hovered = isHero && dist < hoverR && interactionRef.current.hasMoved;
 
       interactionRef.current.isNear = near;
       interactionRef.current.isHovered = hovered;
 
       if (near) {
-        const raw =
-          1 - Math.max(0, Math.min(1, (dist - hoverR) / (magnetR - hoverR)));
-        // Ease-out curve for silky feel
+        const raw = 1 - Math.max(0, Math.min(1, (dist - hoverR) / (magnetR - hoverR)));
         interactionRef.current.hoverProgress = raw * raw * (3 - 2 * raw);
       } else {
         interactionRef.current.hoverProgress = 0;
@@ -114,20 +193,20 @@ function BubbleMesh({ interactionRef }: BubbleMeshProps) {
 
     const targetHover = interactionRef.current.hoverProgress;
 
-    /* ── 2. Exponential smoothing (buttery interpolation) ── */
-    // Approach: smooth = smooth + (target - smooth) * (1 - e^(-speed * dt))
-    const smoothingSpeed = 6.0; // higher = snappier, 6 = silky
+    /* ── 2. Exponential smoothing ── */
+    const smoothingSpeed = 6.0;
     const alpha = 1 - Math.exp(-smoothingSpeed * dt);
     smoothHover.current += (targetHover - smoothHover.current) * alpha;
     interactionRef.current.smoothHoverProgress = smoothHover.current;
 
-    // Write hover progress, hold progress, and bubble coordinates to window for CustomCursor synchronization
+    // Write state for CustomCursor synchronization
     if (typeof window !== "undefined") {
-      (window as any).bubbleHoverProgress = smoothHover.current;
-      (window as any).bubbleHoldProgress = interactionRef.current.holdProgress;
-      (window as any).isBubbleHovered = interactionRef.current.isHovered;
-      (window as any).bubbleX = interactionRef.current.bubbleX;
-      (window as any).bubbleY = interactionRef.current.bubbleY;
+      const customWin = window as CustomWindow;
+      customWin.bubbleHoverProgress = smoothHover.current;
+      customWin.bubbleHoldProgress = interactionRef.current.holdProgress;
+      customWin.isBubbleHovered = interactionRef.current.isHovered;
+      customWin.bubbleX = interactionRef.current.bubbleX;
+      customWin.bubbleY = interactionRef.current.bubbleY;
     }
 
     /* ── 3. Hold-to-pop ── */
@@ -139,7 +218,7 @@ function BubbleMesh({ interactionRef }: BubbleMeshProps) {
     ) {
       interactionRef.current.holdProgress = Math.min(
         1,
-        interactionRef.current.holdProgress + dt / 0.8,
+        interactionRef.current.holdProgress + dt / 0.8
       );
       if (interactionRef.current.holdProgress >= 1) {
         isPoppedState.current = true;
@@ -150,7 +229,7 @@ function BubbleMesh({ interactionRef }: BubbleMeshProps) {
     } else {
       interactionRef.current.holdProgress = Math.max(
         0,
-        interactionRef.current.holdProgress - dt * 3,
+        interactionRef.current.holdProgress - dt * 3
       );
     }
 
@@ -181,46 +260,49 @@ function BubbleMesh({ interactionRef }: BubbleMeshProps) {
       groupRef.current.rotation.z = Math.cos(time * 0.12) * 0.15;
     }
 
-    if (!meshRef.current) return;
-    const positions = meshRef.current.geometry.attributes.position;
-
     /* ── 6. Mouse direction in world space (smoothed) ── */
     if (groupRef.current) {
       const bpos = _vecBpos.current.set(0, 0, 0);
       groupRef.current.getWorldPosition(bpos);
       const vp = state.viewport.getCurrentViewport(state.camera, bpos);
-      const rawDir = _vecRawDir.current.set(
-        (state.pointer.x * vp.width) / 2,
-        (state.pointer.y * vp.height) / 2,
-        bpos.z,
-      )
+      const rawDir = _vecRawDir.current
+        .set(
+          (state.pointer.x * vp.width) / 2,
+          (state.pointer.y * vp.height) / 2,
+          bpos.z
+        )
         .sub(bpos)
         .normalize();
 
-      // Lerp the direction vector for buttery smooth ripple movement
       const dirAlpha = 1 - Math.exp(-4.0 * dt);
       smoothMouseDir.current.lerp(rawDir, dirAlpha).normalize();
     }
     const toMouseDir = smoothMouseDir.current;
-
-    const rot = groupRef.current
-      ? groupRef.current.rotation
-      : new THREE.Euler();
+    const rot = groupRef.current ? groupRef.current.rotation : new THREE.Euler();
     const tn = _vecTn.current;
 
-    /* ── 7. Vertex deformation ── */
-    for (let i = 0; i < positions.count; i++) {
-      const ox = originalPositions.getX(i);
-      const oy = originalPositions.getY(i);
-      const oz = originalPositions.getZ(i);
+    /* ── 7. High-Performance Fluid Vertex Deformation ── */
+    if (!meshRef.current) return;
+    const posAttr = meshRef.current.geometry.attributes.position;
+    const posArray = posAttr.array as Float32Array;
 
-      const len = Math.sqrt(ox * ox + oy * oy + oz * oz);
-      const nx = ox / len;
-      const ny = oy / len;
-      const nz = oz / len;
+    const dimpleDampen = 1 - smoothHover.current * 0.45;
+    const hCurrent = smoothHover.current;
+    const popVal = smoothPop.current;
+    const popD = Math.pow(popVal, 2.0) * 3.0;
+    const oneMinusPop = 1 - popVal;
 
-      // Organic dimples — dampen amplitude on hover for a cleaner surface
-      const dimpleDampen = 1 - smoothHover.current * 0.45;
+    for (let i = 0; i < count; i++) {
+      const i3 = i * 3;
+      const ox = originalPositions[i3];
+      const oy = originalPositions[i3 + 1];
+      const oz = originalPositions[i3 + 2];
+
+      const nx = baseNormals[i3];
+      const ny = baseNormals[i3 + 1];
+      const nz = baseNormals[i3 + 2];
+
+      // Multi-octave organic liquid harmonics
       const df =
         (Math.sin(nx * 6.5 + ny * 3.5 + time * 0.6) * 0.4 +
           Math.cos(ny * 7.5 - nz * 5.0 + time * 0.5) * 0.4 +
@@ -232,11 +314,11 @@ function BubbleMesh({ interactionRef }: BubbleMeshProps) {
 
       tn.set(nx, ny, nz).applyEuler(rot);
       const wNz = tn.z;
-      const fade = Math.pow(Math.max(0, wNz), 1.2);
+      const fade = wNz > 0 ? Math.pow(wNz, 1.2) : 0;
 
       let disp = 0;
       if (df < 0) {
-        disp = -Math.pow(-df, 1.05) * 0.24 * fade;
+        disp = -Math.pow(-df, 1.05) * 0.20 * fade;
       } else {
         disp = Math.pow(df, 1.05) * 0.055;
       }
@@ -245,70 +327,72 @@ function BubbleMesh({ interactionRef }: BubbleMeshProps) {
         Math.sin(nx * 5.0 + time * 0.8) * 0.003 +
         Math.cos(ny * 4.5 - time * 0.7) * 0.003;
 
-      // Liquid ripple toward cursor — broad, gentle bulge
       const dotM = tn.dot(toMouseDir);
-      const ripple =
-        Math.pow(Math.max(0, dotM), 1.8) * 0.055 * smoothHover.current;
+      const ripple = dotM > 0 ? Math.pow(dotM, 1.8) * 0.055 * hCurrent : 0;
 
-      // Pop explosion
-      const popD = Math.pow(smoothPop.current, 2.0) * 3.0;
+      const total = (disp + breath + ripple) * oneMinusPop + popD;
 
-      const total = (disp + breath + ripple) * (1 - smoothPop.current) + popD;
-
-      positions.setXYZ(i, ox + nx * total, oy + ny * total, oz + nz * total);
+      posArray[i3] = ox + nx * total;
+      posArray[i3 + 1] = oy + ny * total;
+      posArray[i3 + 2] = oz + nz * total;
     }
 
-    positions.needsUpdate = true;
+    posAttr.needsUpdate = true;
     meshRef.current.geometry.computeVertexNormals();
 
-    /* ── 8. Material morphing ── */
-    const mat = meshRef.current.material as any;
+    /* ── 8. Material refraction & glass morphing ── */
+    const mat = meshRef.current.material as unknown as Record<string, unknown>;
     if (mat) {
       const h = smoothHover.current;
-      mat.ior = THREE.MathUtils.lerp(1.05, 1.15, h);
-      mat.thickness = THREE.MathUtils.lerp(0.03, 0.12, h);
-      mat.chromaticAberration = THREE.MathUtils.lerp(0.03, 0.14, h);
-      mat.distortion = THREE.MathUtils.lerp(0.15, 0.45, h);
-      mat.distortionScale = THREE.MathUtils.lerp(0.2, 0.5, h);
-      mat.iridescence = THREE.MathUtils.lerp(0.35, 0.85, h);
+      if (typeof mat.ior === "number") mat.ior = THREE.MathUtils.lerp(1.05, 1.10, h);
+      if (typeof mat.thickness === "number") mat.thickness = THREE.MathUtils.lerp(0.02, 0.05, h);
+      if (typeof mat.chromaticAberration === "number")
+        mat.chromaticAberration = THREE.MathUtils.lerp(0.02, 0.04, h);
+      if (typeof mat.distortion === "number") mat.distortion = THREE.MathUtils.lerp(0.08, 0.18, h);
+      if (typeof mat.distortionScale === "number")
+        mat.distortionScale = THREE.MathUtils.lerp(0.15, 0.35, h);
+      if (typeof mat.iridescence === "number")
+        mat.iridescence = THREE.MathUtils.lerp(0.35, 0.75, h);
 
-      // Subtle lavender tint on hover to signal "selected"
       const r = THREE.MathUtils.lerp(0.98, 0.88, h);
       const g = THREE.MathUtils.lerp(0.969, 0.82, h);
       const b = THREE.MathUtils.lerp(1.0, 0.98, h);
-      (mat.color as THREE.Color).setRGB(r, g, b);
+      const matColor = mat.color as THREE.Color | undefined;
+      if (matColor?.setRGB) matColor.setRGB(r, g, b);
 
-      // Pop fadeout
-      mat.transmission = THREE.MathUtils.lerp(1, 0, smoothPop.current);
-      mat.opacity = THREE.MathUtils.lerp(1, 0, smoothPop.current);
+      if (typeof mat._transmission === "number")
+        mat._transmission = THREE.MathUtils.lerp(1, 0, smoothPop.current);
+      if (typeof mat.opacity === "number")
+        mat.opacity = THREE.MathUtils.lerp(1, 0, smoothPop.current);
     }
   });
 
   return (
     <group ref={groupRef} position={[0, 0.1, 0.5]}>
       <Float speed={0.8} rotationIntensity={0.02} floatIntensity={0.03}>
-        <mesh ref={meshRef}>
-          <icosahedronGeometry args={[0.8, 48]} />
+        <mesh ref={meshRef} geometry={geometry}>
+          {/* Pure Optical Glass Refraction — Crystal-clear transparency revealing the bold text behind */}
           <MeshTransmissionMaterial
             backside={false}
-            samples={8}
-            resolution={1024}
+            samples={tier === "high" ? 4 : 2}
+            resolution={tier === "high" ? 1024 : 512}
             transmission={1.0}
             roughness={0.0}
             clearcoat={1.0}
             clearcoatRoughness={0.0}
             thickness={0.03}
-            ior={1.05}
-            chromaticAberration={0.03}
-            anisotropy={0.2}
-            distortion={0.15}
+            ior={1.06}
+            chromaticAberration={0.025}
+            anisotropy={0.1}
+            anisotropicBlur={0}
+            distortion={0.1}
             distortionScale={0.2}
             temporalDistortion={0.0}
             color="#faf7ff"
             attenuationColor="#f3e8ff"
             attenuationDistance={100}
-            iridescence={0.35}
-            iridescenceIOR={1.5}
+            iridescence={0.4}
+            iridescenceIOR={1.4}
             iridescenceThicknessRange={[100, 400]}
             toneMapped={false}
             transparent={true}
@@ -319,10 +403,9 @@ function BubbleMesh({ interactionRef }: BubbleMeshProps) {
   );
 }
 
-/* ─── 3D Text (responsive) ─── */
+/* ─── 3D Text (responsive, rendered directly behind the glass lens) ─── */
 function SceneText() {
   const { viewport } = useThree();
-  // Scale text based on viewport width; desktop ~5.5+ units, mobile ~2.5
   const scale = Math.min(1, viewport.width / 5.5);
 
   return (
@@ -330,11 +413,12 @@ function SceneText() {
       <Text
         position={[0, 0.42, -0.5]}
         fontSize={0.14}
-        color="#a1a1aa"
+        color="#71717a"
         anchorX="center"
         anchorY="middle"
         letterSpacing={0.13}
         font="/fonts/Inter-Regular.woff"
+        sdfGlyphSize={128}
       >
         Full-Stack Engineer • AI Automation
       </Text>
@@ -346,6 +430,7 @@ function SceneText() {
         anchorY="middle"
         letterSpacing={-0.03}
         font="/fonts/Inter-Bold.woff"
+        sdfGlyphSize={128}
       >
         Koushikk
       </Text>
@@ -419,8 +504,10 @@ function BackgroundGradient() {
    ──────────────────────────────────────────────────────── */
 function HoverArc({
   interactionRef,
+  isVisible,
 }: {
   interactionRef: React.MutableRefObject<InteractionData>;
+  isVisible: boolean;
 }) {
   const arcRef = useRef<HTMLDivElement>(null);
 
@@ -430,6 +517,11 @@ function HoverArc({
     let currentScale = 0.85;
 
     const tick = () => {
+      if (!isVisible) {
+        raf = requestAnimationFrame(tick);
+        return;
+      }
+
       const d = interactionRef.current;
       if (!d || !arcRef.current) {
         raf = requestAnimationFrame(tick);
@@ -439,7 +531,6 @@ function HoverArc({
       const targetOpacity = d.hasMoved ? d.smoothHoverProgress * 0.7 : 0;
       const targetScale = 0.85 + d.smoothHoverProgress * 0.15;
 
-      // Smooth with exponential decay
       currentOpacity += (targetOpacity - currentOpacity) * 0.08;
       currentScale += (targetScale - currentScale) * 0.08;
 
@@ -451,7 +542,7 @@ function HoverArc({
 
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
-  }, [interactionRef]);
+  }, [interactionRef, isVisible]);
 
   return (
     <div ref={arcRef} className="hover-arc-container" style={{ opacity: 0 }}>
@@ -479,11 +570,25 @@ function HoverArc({
 /* ────────────────────────────────────────────────────────
    FluidBubble — root component
    ──────────────────────────────────────────────────────── */
-export default function FluidBubble() {
+interface FluidBubbleProps {
+  isVisible?: boolean;
+  tier?: DeviceTier;
+}
+
+export default function FluidBubble({ isVisible = true, tier: tierProp }: FluidBubbleProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [isMobile, setIsMobile] = useState(false);
+  const [tierState, setTierState] = useState<DeviceTier>("high");
 
-  // Detect mobile viewport once on mount
+  useEffect(() => {
+    if (tierProp) return;
+    import("@/lib/deviceTier").then(({ getDeviceTier }) => {
+      setTierState(getDeviceTier());
+    });
+  }, [tierProp]);
+
+  const activeTier = tierProp || tierState;
+
   useEffect(() => {
     const check = () => setIsMobile(window.innerWidth <= 768);
     check();
@@ -492,7 +597,7 @@ export default function FluidBubble() {
   }, []);
 
   const interactionRef = useRef<InteractionData>({
-    mouseX: -9999, // offscreen so nothing triggers on load
+    mouseX: -9999,
     mouseY: -9999,
     bubbleX: 0,
     bubbleY: 0,
@@ -509,9 +614,6 @@ export default function FluidBubble() {
   });
 
   useEffect(() => {
-    const el = containerRef.current;
-    if (!el) return;
-
     const onMove = (e: MouseEvent) => {
       interactionRef.current.mouseX = e.clientX;
       interactionRef.current.mouseY = e.clientY;
@@ -539,7 +641,6 @@ export default function FluidBubble() {
       interactionRef.current.isMouseDown = false;
     };
 
-    // Detect if hovering over clickable elements (links, buttons, or custom cursor:pointer elements)
     const onOver = (e: MouseEvent) => {
       const target = e.target as HTMLElement;
       if (!target) return;
@@ -549,9 +650,9 @@ export default function FluidBubble() {
       interactionRef.current.isInteractive = isClickable;
     };
 
-    window.addEventListener("mousemove", onMove);
-    window.addEventListener("mousedown", onDown);
-    window.addEventListener("mouseup", onUp);
+    window.addEventListener("mousemove", onMove, { passive: true });
+    window.addEventListener("mousedown", onDown, { passive: true });
+    window.addEventListener("mouseup", onUp, { passive: true });
     window.addEventListener("touchmove", onTouchMove, { passive: true });
     window.addEventListener("touchstart", onTouchStart, { passive: true });
     window.addEventListener("touchend", onTouchEnd, { passive: true });
@@ -567,23 +668,11 @@ export default function FluidBubble() {
       window.removeEventListener("mouseover", onOver);
 
       if (typeof window !== "undefined") {
-        (window as any).bubbleHoverProgress = 0;
-        (window as any).bubbleHoldProgress = 0;
+        const customWin = window as CustomWindow;
+        customWin.bubbleHoverProgress = 0;
+        customWin.bubbleHoldProgress = 0;
       }
     };
-  }, []);
-
-  // Control cursor visibility via direct DOM mutation (avoids React re-renders every frame)
-  useEffect(() => {
-    let raf: number;
-    const check = () => {
-      if (containerRef.current) {
-        containerRef.current.style.cursor = interactionRef.current.hasMoved ? "none" : "auto";
-      }
-      raf = requestAnimationFrame(check);
-    };
-    raf = requestAnimationFrame(check);
-    return () => cancelAnimationFrame(raf);
   }, []);
 
   return (
@@ -597,15 +686,19 @@ export default function FluidBubble() {
     >
       <Canvas
         camera={{ position: [0, 0, 5], fov: isMobile ? 52 : 40 }}
-        gl={{ alpha: true, antialias: !isMobile }}
+        gl={{
+          alpha: true,
+          antialias: true,
+          powerPreference: "high-performance",
+        }}
         style={{ position: "absolute", inset: 0 }}
-        dpr={isMobile ? [1, 1] : [1, 2]}
+        dpr={isMobile ? [1, 1.5] : [1, 2]}
       >
         <BackgroundGradient />
         <BackgroundLines />
 
-        <Environment preset="studio" environmentIntensity={2.0} />
-        <ambientLight intensity={0.5} color="#faf5ff" />
+        <Environment preset="studio" environmentIntensity={1.8} />
+        <ambientLight intensity={0.6} color="#faf5ff" />
         <directionalLight
           position={[0.2, 0.2, 6]}
           intensity={3.0}
@@ -626,18 +719,19 @@ export default function FluidBubble() {
           intensity={0.8}
           color="#ebdffd"
         />
-        <directionalLight
-          position={[0, 3, -5]}
-          intensity={0.8}
-          color="#c09cff"
-        />
 
         <SceneText />
-        <BubbleMesh interactionRef={interactionRef} />
+        <Suspense fallback={null}>
+          <BubbleMesh
+            interactionRef={interactionRef}
+            isVisible={isVisible}
+            tier={activeTier}
+          />
+        </Suspense>
       </Canvas>
 
-      {/* HTML Overlays — outside canvas, pointer-events: none */}
-      <HoverArc interactionRef={interactionRef} />
+      {/* HTML Overlays — outside canvas */}
+      <HoverArc interactionRef={interactionRef} isVisible={isVisible} />
     </div>
   );
 }

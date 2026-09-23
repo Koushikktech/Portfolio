@@ -1,9 +1,10 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { useState, useEffect, RefObject, useCallback } from "react";
+import { useState, RefObject, useCallback } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
+import { setHasBooted } from "@/lib/bootState";
 
 interface NavbarProps {
   scrollContainerRef?: RefObject<HTMLDivElement | null>;
@@ -11,82 +12,70 @@ interface NavbarProps {
   scrollToAbout?: () => void;
 }
 
-// Moved outside component to avoid recreation on every render
 const NAV_ITEMS = [
   { label: "Home", href: "/" },
   { label: "Craft", href: "/craft" },
   { label: "Lab", href: "/lab" },
   { label: "About", href: "/#about" },
-  // CV hidden for now — uncomment when ready:
-  // { label: "CV", href: "/cv" },
 ];
 
 export default function Navbar({
-  scrollContainerRef,
   scrollToSlide,
   scrollToAbout,
 }: NavbarProps) {
   const pathname = usePathname();
   const router = useRouter();
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
-  const [activeIndex, setActiveIndex] = useState<number>(-1);
 
-  // Track active page from pathname
-  useEffect(() => {
-    const idx = NAV_ITEMS.findIndex((item) => {
-      if (item.href === "/" || item.href === "/#about") {
-        if (item.href === "/#about") return false; // About active state handled by scroll
-        return pathname === "/";
-      }
-      return pathname.startsWith(item.href);
-    });
-    setActiveIndex(idx);
-  }, [pathname]);
+  // Derived state directly from pathname — zero cascading render effects
+  const activeIndex = NAV_ITEMS.findIndex((item) => {
+    if (item.href === "/" || item.href === "/#about") {
+      if (item.href === "/#about") return false;
+      return pathname === "/";
+    }
+    return pathname.startsWith(item.href);
+  });
 
   // Handle Home click — scroll to top on homepage, navigate from other pages
   const handleHomeClick = useCallback(
     (e: React.MouseEvent) => {
       e.preventDefault();
+      setHasBooted(true);
       if (pathname === "/") {
-        // Already on homepage — smooth scroll to top
         if (scrollToSlide) {
-          scrollToSlide(-1); // -1 = hero (top)
+          scrollToSlide(-1);
         } else {
-          // Fallback: direct scroll
           const scrollContainer = document.querySelector(".scroll-root");
           if (scrollContainer) {
             scrollContainer.scrollTo({ top: 0, behavior: "smooth" });
           }
         }
       } else {
-        // Navigate to homepage
         router.push("/");
       }
     },
-    [pathname, scrollToSlide, router],
+    [pathname, scrollToSlide, router]
   );
 
   // Handle About click — scroll on homepage, navigate from other pages
   const handleAboutClick = useCallback(
     (e: React.MouseEvent) => {
       e.preventDefault();
+      setHasBooted(true);
       if (pathname === "/") {
-        // Already on homepage — smooth scroll to about section
         if (scrollToAbout) {
           scrollToAbout();
         } else {
-          // Fallback: direct scroll
           const aboutEl = document.getElementById("about");
           if (aboutEl) {
             aboutEl.scrollIntoView({ behavior: "smooth" });
           }
         }
       } else {
-        // Navigate to homepage with scrollTo param
         router.push("/?scrollTo=about");
       }
     },
-    [pathname, scrollToAbout, router],
+    [pathname, scrollToAbout, router]
   );
 
   return (
@@ -118,7 +107,7 @@ export default function Navbar({
               onMouseLeave={() => setHoveredIndex(null)}
             >
               {isHome ? (
-                <a
+                <Link
                   href="/"
                   onClick={handleHomeClick}
                   className={`nav-link ${isActive ? "active" : ""}`}
@@ -127,9 +116,9 @@ export default function Navbar({
                     {item.label}
                     {showCursor && <span className="nav-cursor">_</span>}
                   </span>
-                </a>
+                </Link>
               ) : isAbout ? (
-                <a
+                <Link
                   href="/#about"
                   onClick={handleAboutClick}
                   className={`nav-link ${isActive ? "active" : ""}`}
@@ -138,7 +127,7 @@ export default function Navbar({
                     {item.label}
                     {showCursor && <span className="nav-cursor">_</span>}
                   </span>
-                </a>
+                </Link>
               ) : (
                 <Link
                   href={item.href}

@@ -17,6 +17,10 @@
     box-sizing: border-box;
   }
 
+  html {
+    background: #09090b;
+  }
+
   body {
     color: #ffffff;
     font-family:
@@ -25,22 +29,31 @@
       BlinkMacSystemFont,
       "Segoe UI",
       sans-serif;
-    overflow: hidden;
-    height: 100vh;
+    overflow-x: hidden;
+    min-height: 100vh;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     background: #09090b;
   }
 
-  /* Hide default cursor on desktop hover-capable devices globally */
-  @media (hover: hover) and (pointer: fine) {
-    body,
-    a,
-    button,
-    [role="button"],
-    .nav-link {
-      cursor: none !important;
-    }
+  /* Only lock body viewport height and scroll on the homepage where .scroll-root manages the scroll */
+  body:has(.scroll-root) {
+    overflow: hidden;
+    height: 100vh;
+    height: 100dvh;
+  }
+
+  /* Native responsive cursors */
+  a,
+  button,
+  [role="button"],
+  .nav-link,
+  .project-link,
+  .cv-download-btn,
+  .craft-card-primary-btn,
+  .craft-card-secondary-btn,
+  .scroll-indicator {
+    cursor: pointer;
   }
 }
 
@@ -79,6 +92,7 @@
   width: 100%;
   height: 100vh;
   overflow: hidden;
+  background: radial-gradient(circle at 50% 50%, #faf7ff 0%, #ebdffd 75%, #dfccfa 100%);
 }
 
 @media (pointer: coarse) {
@@ -233,71 +247,80 @@
 }
 
 .nav-cursor {
-  color: #bfff00;
+  color: rgba(255, 255, 255, 0.6);
   margin-left: 2px;
-  font-weight: bold;
-  animation: nav-blink 1s step-end infinite;
-}
-
-@keyframes nav-blink {
-  from,
-  to {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0;
-  }
+  font-weight: 500;
 }
 
 
 
-/* ========== CUSTOM CURSOR (neon lime dot & expanding ring) ========== */
+/* ========== CUSTOM CURSOR SYSTEM ========== */
+html.has-custom-cursor,
+html.has-custom-cursor *,
+html.has-custom-cursor a,
+html.has-custom-cursor button,
+html.has-custom-cursor [role="button"],
+html.has-custom-cursor input,
+html.has-custom-cursor select,
+html.has-custom-cursor textarea,
+html.has-custom-cursor .nav-link,
+html.has-custom-cursor .project-link,
+html.has-custom-cursor .cv-download-btn,
+html.has-custom-cursor .craft-card-primary-btn,
+html.has-custom-cursor .craft-card-secondary-btn,
+html.has-custom-cursor .scroll-indicator {
+  cursor: none !important;
+}
 
 .custom-cursor {
   position: fixed;
   top: 0;
   left: 0;
-  pointer-events: none;
-  z-index: 9999;
+  pointer-events: none !important;
+  z-index: 999999;
   display: flex;
   align-items: center;
   justify-content: center;
   will-change: transform, opacity;
   transform: translateZ(0);
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
 }
 
 .cursor-dot {
-  width: 11px;
-  height: 11px;
-  background-color: #bfff00; /* Neon Lime */
+  width: 10px;
+  height: 10px;
+  background-color: #bfff00; /* Signature Neon Lime */
   border-radius: 50%;
-  pointer-events: none;
+  pointer-events: none !important;
+  box-shadow: 0 0 10px rgba(191, 255, 0, 0.6), 0 0 2px rgba(191, 255, 0, 0.9);
+  transition: transform 0.15s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.15s ease;
 }
 
 .cursor-ring {
   position: fixed;
   top: 0;
   left: 0;
-  pointer-events: none;
-  z-index: 9998;
+  pointer-events: none !important;
+  z-index: 999998;
   border-radius: 50%;
   border: 1.5px solid rgba(255, 255, 255, 0.5);
   box-sizing: border-box;
   mix-blend-mode: difference;
   will-change: transform, width, height, opacity;
-  /* No CSS transitions — JS spring drives all position/size changes */
   transform: translateZ(0);
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
 }
 
-/* Hover active state for the ring */
 .cursor-ring.is-hovered {
-  border-color: rgba(255, 255, 255, 0.85);
+  border-color: rgba(255, 255, 255, 0.9);
   border-width: 2px;
 }
 
-/* Craft image hover: morph into a filled bubble with label */
+/* Craft image / media hover */
 .cursor-ring.is-craft-image {
-  border-color: rgba(191, 255, 0, 0.6);
+  border-color: rgba(191, 255, 0, 0.7);
   border-width: 1.5px;
   background: rgba(191, 255, 0, 0.12);
   backdrop-filter: blur(8px);
@@ -318,20 +341,18 @@
   pointer-events: none;
 }
 
-/*
-  cursor-label: Standalone fixed element for "Hold" text + underline.
-  MUST be a top-level fixed element (NOT nested inside .custom-cursor)
-  so mix-blend-mode: difference blends against the actual page background,
-  not the transparent parent container — which would silently break the effect.
-*/
+/* Cursor label for hero bubble hold */
 .cursor-label {
   position: fixed;
   top: 0;
   left: 0;
-  pointer-events: none;
-  z-index: 10000;
+  pointer-events: none !important;
+  z-index: 999999;
   mix-blend-mode: difference;
   will-change: transform, opacity;
+  transform: translateZ(0);
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
 }
 
 .cursor-label-inner {
@@ -343,11 +364,11 @@
 
 .cursor-text-hold {
   font-family: var(--font-inter), sans-serif;
-  font-size: 11px;
-  font-weight: 600;
+  font-size: 10px;
+  font-weight: 650;
   text-transform: uppercase;
-  letter-spacing: 0.12em;
-  color: #ffffff; /* White → inverts to black on white bg, stays white on dark */
+  letter-spacing: 0.14em;
+  color: #ffffff;
   pointer-events: none;
   white-space: nowrap;
   line-height: 1.2;
@@ -375,10 +396,11 @@
   will-change: transform;
 }
 
-/* Responsive overrides to restore native cursor on touch-only devices */
+/* Touch-only devices (smartphones): keep custom cursor hidden */
 @media (hover: none) and (pointer: coarse) {
   .custom-cursor,
-  .cursor-ring {
+  .cursor-ring,
+  .cursor-label {
     display: none !important;
   }
 }
@@ -476,7 +498,7 @@
 }
 
 .craft-header-counter .current {
-  color: #bfff00;
+  color: #ffffff;
   font-size: 19px;
   font-weight: 600;
 }
@@ -549,7 +571,7 @@
   font-size: 10px;
   letter-spacing: 0.14em;
   font-weight: 600;
-  color: #bfff00;
+  color: rgba(255, 255, 255, 0.75);
   text-transform: uppercase;
 }
 
@@ -557,7 +579,7 @@
   width: 4px;
   height: 4px;
   border-radius: 50%;
-  background-color: rgba(191, 255, 0, 0.4);
+  background-color: rgba(255, 255, 255, 0.25);
 }
 
 .meta-category-year .year {
@@ -612,18 +634,18 @@
   padding-bottom: 4px;
   border-bottom: 1.5px solid rgba(255, 255, 255, 0.25);
   transition:
-    border-color 0.3s ease,
-    color 0.3s ease;
+    border-color 0.2s cubic-bezier(0.16, 1, 0.3, 1),
+    color 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .project-link:hover {
-  border-color: #bfff00;
-  color: #bfff00;
+  border-color: #ffffff;
+  color: #ffffff;
 }
 
 .project-link .arrow {
   display: inline-block;
-  transition: transform 0.3s ease;
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .project-link:hover .arrow {
@@ -917,6 +939,8 @@
   width: 100%;
   background: #09090b;
   color: #ffffff;
+  content-visibility: auto;
+  contain-intrinsic-size: 1000px;
 }
 
 .about-divider {
@@ -1147,21 +1171,9 @@
   font-weight: 400;
 }
 
-/* ========== COMING SOON PULSE ========== */
-@keyframes coming-soon-glow {
-  0%,
-  100% {
-    opacity: 1;
-    box-shadow: 0 0 4px rgba(191, 255, 0, 0.6);
-  }
-  50% {
-    opacity: 0.4;
-    box-shadow: 0 0 12px rgba(191, 255, 0, 0.3);
-  }
-}
-
-.coming-soon-pulse {
-  animation: coming-soon-glow 2s ease-in-out infinite;
+/* Static clean badge */
+.coming-soon-static {
+  opacity: 0.85;
 }
 
 
@@ -1198,21 +1210,26 @@
   }
 }
 
-/* ========== MOBILE NAVBAR — HORIZONTAL BOTTOM BAR ========== */
+/* ========== MOBILE NAVBAR — FLOATING LIQUID GLASS PILL ========== */
 @media (max-width: 768px) {
   .site-nav {
-    position: fixed;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    top: auto;
-    transform: none;
+    position: fixed !important;
+    left: 50% !important;
+    right: auto !important;
+    bottom: calc(14px + env(safe-area-inset-bottom, 12px)) !important;
+    top: auto !important;
+    transform: translateX(-50%) !important;
     z-index: 100;
-    background: rgba(9, 9, 11, 0.92);
-    backdrop-filter: blur(16px);
-    -webkit-backdrop-filter: blur(16px);
-    border-top: 1px solid rgba(255, 255, 255, 0.06);
-    padding: 0 16px;
+    width: calc(100% - 32px);
+    max-width: 360px;
+    height: 52px;
+    border-radius: 9999px;
+    background: rgba(18, 18, 22, 0.78);
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+    padding: 4px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -1221,39 +1238,57 @@
   .nav-links {
     flex-direction: row;
     align-items: center;
-    justify-content: center;
-    gap: 0;
+    justify-content: space-between;
+    gap: 4px;
     width: 100%;
-    padding: 12px 0;
+    height: 100%;
+    padding: 0;
+    margin: 0;
   }
 
   .nav-item {
     flex: 1;
+    height: 100%;
     display: flex;
+    align-items: center;
     justify-content: center;
   }
 
   .nav-link {
-    font-size: 11px;
-    letter-spacing: 0.08em;
-    /* Force light color on mobile since nav is always on dark background */
-    color: rgba(255, 255, 255, 0.45) !important;
+    width: 100%;
+    height: 100%;
+    min-height: 44px; /* Apple HIG 44px minimum touch target */
+    display: flex;
+    align-items: center;
     justify-content: center;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    color: rgba(255, 255, 255, 0.5) !important;
+    border-radius: 9999px;
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    -webkit-tap-highlight-color: transparent;
   }
 
-  .nav-link:hover,
+  .nav-link:active {
+    transform: scale(0.96);
+  }
+
   .nav-link.active {
+    color: #ffffff !important;
+    background: rgba(255, 255, 255, 0.1);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.15);
+  }
+
+  .nav-link:hover {
     color: rgba(255, 255, 255, 0.9) !important;
-    transform: none;
   }
 }
-
-
 
 /* ========== MOBILE SCROLL INDICATOR ========== */
 @media (max-width: 768px) {
   .scroll-indicator {
-    bottom: 80px; /* Raise above mobile navbar */
+    bottom: calc(80px + env(safe-area-inset-bottom, 12px));
   }
 }
 
@@ -1428,8 +1463,8 @@
 @media (max-width: 768px) {
   .site-footer {
     margin-top: 48px;
-    /* Add bottom padding to clear the mobile navbar */
-    padding-bottom: 60px;
+    /* Add bottom padding to clear the mobile floating pill navbar with safe-area support */
+    padding-bottom: calc(84px + env(safe-area-inset-bottom, 12px));
   }
 
   .footer-inner {
@@ -1448,10 +1483,607 @@
   }
 }
 
-/* ========== MOBILE SUBPAGES ========== */
+/* ========== TYPOGRAPHY & POLISH PRINCIPLES ========== */
+h1, h2, h3, .craft-title, .project-title, .cv-title, .craft-card-title, .lab-card-title {
+  text-wrap: balance;
+}
+
+p, .project-desc, .about-bio-main, .about-bio-sub, .cv-point-item, .craft-card-desc, .lab-card-desc {
+  text-wrap: pretty;
+}
+
+/* Button & Link Tactile Press Feedback */
+button, a.project-link, a.cv-download-btn, a.craft-card-secondary-btn, .footer-link {
+  -webkit-tap-highlight-color: transparent;
+}
+
+a.cv-download-btn:active, a.craft-card-secondary-btn:active, a.project-link:active {
+  transform: scale(0.96);
+}
+
+/* ========== SUBPAGES COMMON & DESKTOP STYLES ========== */
+.subpage-root {
+  background: #09090b;
+  min-height: 100vh;
+  color: #ffffff;
+  padding: 8vh 8% 10vh 18%;
+  position: relative;
+  overflow-x: hidden;
+}
+
+.cv-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  margin-bottom: 56px;
+  gap: 24px;
+}
+
+.cv-header-left {
+  display: flex;
+  flex-direction: column;
+}
+
+.cv-title {
+  font-size: clamp(2.5rem, 5vw, 4.2rem);
+  font-weight: 850;
+  letter-spacing: -0.04em;
+  color: #ffffff;
+  line-height: 0.95;
+  margin: 0;
+}
+
+.cv-subtitle-meta {
+  margin-top: 12px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.15em;
+  color: rgba(255, 255, 255, 0.45);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  text-transform: uppercase;
+}
+
+.cv-download-btn {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 22px;
+  border-radius: 9999px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  color: #ffffff;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-decoration: none;
+  transition: background-color 0.2s cubic-bezier(0.16, 1, 0.3, 1),
+              border-color 0.2s cubic-bezier(0.16, 1, 0.3, 1),
+              color 0.2s cubic-bezier(0.16, 1, 0.3, 1),
+              transform 0.2s cubic-bezier(0.16, 1, 0.3, 1),
+              box-shadow 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+}
+
+.cv-download-btn:hover,
+.craft-card-primary-btn:hover {
+  background: #ffffff;
+  border-color: #ffffff;
+  color: #09090b;
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px rgba(255, 255, 255, 0.18);
+}
+
+.craft-card-primary-btn {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 22px;
+  border-radius: 9999px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  color: #ffffff;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-decoration: none;
+  transition: background-color 0.2s cubic-bezier(0.16, 1, 0.3, 1),
+              border-color 0.2s cubic-bezier(0.16, 1, 0.3, 1),
+              color 0.2s cubic-bezier(0.16, 1, 0.3, 1),
+              transform 0.2s cubic-bezier(0.16, 1, 0.3, 1),
+              box-shadow 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+}
+
+/* CV Sections */
+.cv-section {
+  margin-bottom: 56px;
+}
+
+.cv-section-title {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.7);
+  font-weight: 650;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  margin-bottom: 28px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  padding-bottom: 12px;
+}
+
+.cv-list {
+  display: flex;
+  flex-direction: column;
+  gap: 36px;
+}
+
+.cv-entry-grid {
+  display: grid;
+  grid-template-columns: 260px 1fr;
+  gap: 28px;
+}
+
+.cv-entry-meta {
+  display: flex;
+  flex-direction: column;
+}
+
+.cv-role {
+  font-size: 18px;
+  font-weight: 700;
+  color: #ffffff;
+  margin-bottom: 4px;
+}
+
+.cv-company {
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.cv-period {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.35);
+  margin-top: 6px;
+  font-family: monospace;
+}
+
+.cv-points {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+}
+
+.cv-point-item {
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.68);
+  line-height: 1.6;
+  font-weight: 350;
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+}
+
+.cv-bullet {
+  color: #bfff00;
+  font-size: 12px;
+  flex-shrink: 0;
+}
+
+.cv-skills-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 20px;
+}
+
+.cv-skill-category {
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 14px;
+  padding: 20px;
+}
+
+.cv-skill-cat-title {
+  font-size: 12px;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.9);
+  margin-bottom: 12px;
+  letter-spacing: 0.06em;
+}
+
+.cv-skill-pill-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.cv-skill-pill {
+  padding: 5px 10px;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.65);
+  background: rgba(255, 255, 255, 0.04);
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  font-family: monospace;
+}
+
+/* CRAFT SHOWCASE PAGE */
+.craft-filter-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  border-radius: 9999px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  color: rgba(255, 255, 255, 0.7);
+  white-space: nowrap;
+}
+
+.craft-badge-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.5);
+}
+
+.craft-showcase-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+  gap: 32px;
+}
+
+.craft-showcase-card {
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 20px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  transition: border-color 0.3s ease, box-shadow 0.3s ease, transform 0.3s ease;
+}
+
+.craft-showcase-card:hover {
+  border-color: rgba(255, 255, 255, 0.2);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.06) inset;
+  transform: translateY(-2px);
+}
+
+.craft-card-media-wrap {
+  width: 100%;
+  aspect-ratio: 16 / 10;
+  position: relative;
+  overflow: hidden;
+  background: #000000;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.craft-card-media {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.craft-card-placeholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(255, 255, 255, 0.3);
+  font-size: 14px;
+}
+
+.craft-card-overlay-badge {
+  position: absolute;
+  top: 14px;
+  left: 14px;
+  padding: 4px 10px;
+  border-radius: 9999px;
+  background: rgba(0, 0, 0, 0.65);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  color: #ffffff;
+  text-transform: uppercase;
+}
+
+.craft-category-badge-inline {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  border-radius: 9999px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  color: rgba(255, 255, 255, 0.85);
+  text-transform: uppercase;
+}
+
+.craft-card-body {
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+}
+
+.craft-card-meta-line {
+  font-size: 11px;
+  font-family: monospace;
+  color: rgba(255, 255, 255, 0.4);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.craft-card-id {
+  color: rgba(255, 255, 255, 0.5);
+  font-weight: 700;
+}
+
+.craft-card-title {
+  font-size: 22px;
+  font-weight: 700;
+  color: #ffffff;
+  margin-bottom: 10px;
+}
+
+.craft-card-desc {
+  font-size: 13px;
+  line-height: 1.6;
+  color: rgba(255, 255, 255, 0.6);
+  margin-bottom: 18px;
+}
+
+.craft-card-highlights {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 20px;
+  background: rgba(255, 255, 255, 0.02);
+  border-radius: 10px;
+  padding: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.craft-card-highlight-item {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.7);
+  display: flex;
+  gap: 8px;
+  line-height: 1.4;
+}
+
+.craft-card-tech-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 22px;
+  margin-top: auto;
+}
+
+.craft-card-tech-pill {
+  padding: 4px 8px;
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.6);
+  background: rgba(255, 255, 255, 0.04);
+  border-radius: 6px;
+  font-family: monospace;
+}
+
+.craft-card-actions {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.craft-card-secondary-btn {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 10px 16px;
+  border-radius: 9999px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 12px;
+  font-weight: 650;
+  letter-spacing: 0.08em;
+  text-decoration: none;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.craft-card-secondary-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #ffffff;
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+/* ========== LAB MINIMAL COMING SOON & BREAKOUT GAME ========== */
+.lab-game-minimal {
+  max-width: 640px;
+  width: 100%;
+}
+
+.lab-minimal-hud {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+  padding: 0 4px;
+}
+
+.lab-hud-item {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.lab-hud-key {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  color: rgba(255, 255, 255, 0.35);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+.lab-hud-val {
+  font-size: 14px;
+  font-weight: 700;
+  color: #ffffff;
+  font-variant-numeric: tabular-nums;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+.lab-hud-lives {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.lab-hud-heart {
+  width: 6px;
+  height: 6px;
+  border-radius: 1px;
+  background: rgba(255, 255, 255, 0.15);
+  transition: background 0.2s ease, box-shadow 0.2s ease;
+}
+
+.lab-hud-heart.active {
+  background: #38bdf8;
+  box-shadow: 0 0 6px rgba(56, 189, 248, 0.6);
+}
+
+.lab-canvas-viewport {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  background: #09090b;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  cursor: crosshair;
+}
+
+.lab-game-canvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.lab-game-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(9, 9, 11, 0.8);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  z-index: 10;
+}
+
+.lab-game-overlay-title {
+  font-size: 22px;
+  font-weight: 750;
+  color: #ffffff;
+  letter-spacing: 0.04em;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+.lab-game-btn {
+  min-height: 38px;
+  padding: 8px 24px;
+  border-radius: 9999px;
+  background: #ffffff;
+  color: #09090b;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  border: none;
+  cursor: pointer;
+  transition: transform 0.15s ease, opacity 0.15s ease;
+}
+
+.lab-game-btn:hover {
+  opacity: 0.9;
+  transform: scale(1.02);
+}
+
+.lab-game-btn:active {
+  transform: scale(0.96);
+}
+
+
+/* ========== MOBILE RESPONSIVE ADAPTATIONS ========== */
 @media (max-width: 768px) {
   .subpage-root {
-    /* Add bottom padding to clear the mobile navbar */
-    padding-bottom: 72px !important;
+    /* Responsive padding removing desktop left margin and clearing safe-area */
+    padding: 4vh 5% calc(88px + env(safe-area-inset-bottom, 12px)) 5% !important;
+  }
+
+  .cv-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 18px;
+    margin-bottom: 36px;
+  }
+
+  .cv-title {
+    font-size: clamp(2rem, 8vw, 3rem);
+  }
+
+  .cv-download-btn {
+    width: 100%;
+    justify-content: center;
+    min-height: 48px;
+  }
+
+  .cv-entry-grid {
+    grid-template-columns: 1fr;
+    gap: 14px;
+  }
+
+  .cv-skills-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .craft-showcase-grid {
+    grid-template-columns: 1fr;
+    gap: 24px;
+  }
+
+  .lab-showcase-grid {
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+
+  .lab-card {
+    padding: 20px;
   }
 }

@@ -1,12 +1,17 @@
 "use client";
 
-import { useEffect, useRef, useState, useCallback } from "react";
-import FluidBubble from "@/components/FluidBubble";
+import { useEffect, useRef, useState, useCallback, useSyncExternalStore } from "react";
 import Navbar from "@/components/Navbar";
 import CraftSection from "@/components/CraftSection";
-import CustomCursor from "@/components/CustomCursor";
 import SnakeBootScreen from "@/components/SnakeBootScreen";
 import AboutSection from "@/components/AboutSection";
+import FluidBubble from "@/components/FluidBubble";
+import FluidBubbleFallback from "@/components/FluidBubbleFallback";
+import { FluidBubbleErrorBoundary } from "@/components/FluidBubbleErrorBoundary";
+import { useDeviceTier, RuntimeFPSWatchdog } from "@/lib/deviceTier";
+import { getHasBooted, setHasBooted } from "@/lib/bootState";
+
+const emptySubscribe = () => () => {};
 
 export default function Home() {
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -17,31 +22,40 @@ export default function Home() {
   const navWrapperRef = useRef<HTMLDivElement>(null);
 
   const [activeSlide, setActiveSlide] = useState(0);
+  const [isHeroVisible, setIsHeroVisible] = useState(true);
   const targetScrollTopRef = useRef(0);
 
-  // Session-aware booting: always start true (matches SSR), then check sessionStorage on mount
-  const [isBooting, setIsBooting] = useState(true);
-  const isBootingRef = useRef(true);
+  // Zero-cascade hydration check via useSyncExternalStore
+  const isMounted = useSyncExternalStore(
+    emptySubscribe,
+    () => true,
+    () => false
+  );
 
-  // Check sessionStorage after mount to skip loading if already booted this session
-  useEffect(() => {
-    if (sessionStorage.getItem("portfolio_booted")) {
-      setIsBooting(false);
-      isBootingRef.current = false;
-    }
-  }, []);
+  // Device capability & tiering
+  const { tier, capabilities } = useDeviceTier();
 
+  // Show loading screen on browser reload/refresh, but never during client-side navigation
+  const [isBooting, setIsBooting] = useState(() => !getHasBooted());
+
+  const isBootingRef = useRef(isBooting);
   useEffect(() => {
     isBootingRef.current = isBooting;
   }, [isBooting]);
 
   const handleBootComplete = useCallback(() => {
+    setHasBooted(true);
     setIsBooting(false);
-    sessionStorage.setItem("portfolio_booted", "1");
   }, []);
 
-  // Handle scrollTo query param (from About nav link on other pages)
-  // Uses window.location directly to avoid useSearchParams Suspense issues
+  // Initialize runtime FPS watchdog to catch sustained frame drops
+  useEffect(() => {
+    const watchdog = new RuntimeFPSWatchdog();
+    watchdog.start();
+    return () => watchdog.stop();
+  }, []);
+
+  // Handle scrollTo query param
   useEffect(() => {
     if (isBooting) return;
     const params = new URLSearchParams(window.location.search);
@@ -52,7 +66,6 @@ export default function Home() {
         if (aboutEl && scrollRef.current) {
           targetScrollTopRef.current = aboutEl.offsetTop;
         }
-        // Clean up the URL without triggering navigation
         window.history.replaceState({}, "", "/");
       }, 150);
     }
@@ -65,11 +78,10 @@ export default function Home() {
 
     let raf: number;
     let smoothProgress = 0;
-    let lastSetProgress = -1; // Track last value set to avoid needless CSS recalcs
+    let lastSetProgress = -1;
     let lastTime = performance.now();
     let currentScroll = container.scrollTop;
 
-    // Initialize target to current scroll on mount
     targetScrollTopRef.current = container.scrollTop;
 
     const isTouchDevice = () => {
@@ -77,25 +89,20 @@ export default function Home() {
       return window.matchMedia("(pointer: coarse)").matches;
     };
 
-    // ── Scroll physics config ──
     const SMOOTH_SPEED = 7;
-
-    // ── Soft-snap state ──
-    // Tracks when the user last scrolled to determine when they've "stopped"
     let lastWheelTime = 0;
     let hasWheeled = false;
 
     const update = (now: number) => {
       const rawDt = (now - lastTime) / 1000;
-      const dt = Math.min(rawDt, 0.05); // cap to prevent jumps on tab-switch
+      const dt = Math.min(rawDt, 0.05);
       lastTime = now;
 
       const viewportH = container.clientHeight || window.innerHeight;
 
       if (!isTouchDevice()) {
-        // Detect external scroll changes (keyboard navigation, programmatic scroll)
         const externalDiff = Math.abs(
-          container.scrollTop - Math.round(currentScroll),
+          container.scrollTop - Math.round(currentScroll)
         );
         if (externalDiff > 30) {
           currentScroll = container.scrollTop;
@@ -104,7 +111,6 @@ export default function Home() {
           lastWheelTime = now;
         }
 
-        // Frame-rate independent exponential smoothing
         const alpha = 1 - Math.exp(-SMOOTH_SPEED * dt);
         const diff = targetScrollTopRef.current - currentScroll;
 
@@ -116,21 +122,15 @@ export default function Home() {
           container.scrollTop = Math.round(targetScrollTopRef.current);
         }
 
-        // ── Soft snap: only snap between hero and craft boundary ──
-        // Inside the craft section, scrolling is free — no per-card snapping.
         const timeSinceWheel = (now - lastWheelTime) / 1000;
         if (hasWheeled && Math.abs(diff) < 5 && timeSinceWheel > 0.6) {
           hasWheeled = false;
-
-          // Only snap in the hero→craft transition zone
           if (currentScroll < viewportH) {
             const nearest = currentScroll < viewportH * 0.4 ? 0 : viewportH;
             targetScrollTopRef.current = nearest;
           }
-          // Once inside craft section, let the user scroll freely
         }
       } else {
-        // On touch devices, let the browser handle scroll natively
         currentScroll = container.scrollTop;
         targetScrollTopRef.current = currentScroll;
       }
@@ -141,29 +141,28 @@ export default function Home() {
       const rawProgress = Math.min(1, Math.max(0, actualScrollTop / viewportH));
       progressRef.current = rawProgress;
 
-      // Smooth the theme progress (also frame-rate independent)
       const themeAlpha = 1 - Math.exp(-8 * dt);
       smoothProgress += (rawProgress - smoothProgress) * themeAlpha;
 
-      // Snap to exact boundaries when very close to avoid perpetual micro-updates
       if (smoothProgress > 0.998) smoothProgress = 1;
       if (smoothProgress < 0.002) smoothProgress = 0;
 
-      // Only update CSS custom property when the value has meaningfully changed.
-      // This prevents continuous style recalculation that causes text jitter in
-      // the About section (every setProperty triggers a full CSS recalc).
       if (Math.abs(smoothProgress - lastSetProgress) > 0.002) {
         lastSetProgress = smoothProgress;
         if (navWrapperRef.current) {
           navWrapperRef.current.style.setProperty(
             "--scroll-progress",
-            String(smoothProgress),
+            String(smoothProgress)
           );
         }
       }
 
-      // Determine the active slide index based on scroll position.
-      // Hero: 0–100vh, Project 0: 100–200vh, Project 1: 200–300vh, Project 2: 300–400vh
+      // ── Visibility Occlusion Culling ──
+      // Hero is considered visible only while partially on screen
+      const heroVisible = actualScrollTop < viewportH * 0.9;
+      setIsHeroVisible((prev) => (prev !== heroVisible ? heroVisible : prev));
+
+      // Active slide tracking
       let newActiveSlide = 0;
       if (actualScrollTop >= 2.5 * viewportH) {
         newActiveSlide = 2;
@@ -176,7 +175,7 @@ export default function Home() {
         return prev;
       });
 
-      // Fade the hero canvas as user scrolls into craft
+      // Fade canvas as user scrolls into craft
       if (canvasWrapRef.current) {
         const fadeStart = 0.15;
         const fadeEnd = 0.75;
@@ -194,9 +193,6 @@ export default function Home() {
       raf = requestAnimationFrame(update);
     };
 
-    // ── Wheel interception ──
-    // Accumulate deltas into the target. The smooth loop above handles all animation.
-    // No snap timeout — the user controls exactly where they scroll.
     const onWheel = (e: WheelEvent) => {
       if (isBootingRef.current) return;
       if (isTouchDevice()) return;
@@ -205,10 +201,9 @@ export default function Home() {
       const maxScroll = container.scrollHeight - container.clientHeight;
       targetScrollTopRef.current = Math.min(
         maxScroll,
-        Math.max(0, targetScrollTopRef.current + e.deltaY),
+        Math.max(0, targetScrollTopRef.current + e.deltaY)
       );
 
-      // Track scroll activity for soft-snap
       lastWheelTime = performance.now();
       hasWheeled = true;
     };
@@ -222,18 +217,14 @@ export default function Home() {
     };
   }, []);
 
-  // --- Smooth scroll handler ---
   const scrollToSlide = useCallback((index: number) => {
     const container = scrollRef.current;
     if (!container) return;
     const viewportH = container.clientHeight || window.innerHeight;
-
-    // index -1 = Hero, index 0,1,2 = Craft projects
     const target = index === -1 ? 0 : (index + 1) * viewportH;
     targetScrollTopRef.current = target;
   }, []);
 
-  // --- Scroll to About section handler ---
   const scrollToAbout = useCallback(() => {
     const container = scrollRef.current;
     if (!container) return;
@@ -246,10 +237,7 @@ export default function Home() {
 
   return (
     <>
-      {/* Custom cursor — always mounted, always visible once booted */}
-      {!isBooting && <CustomCursor />}
-
-      {/* Navbar — fixed, above everything */}
+      {/* Navbar — fixed */}
       <div
         ref={navWrapperRef}
         style={{
@@ -278,7 +266,15 @@ export default function Home() {
         {/* ─── Section 1: Hero ─── */}
         <section ref={heroRef} className="hero-section" id="hero">
           <div ref={canvasWrapRef} className="hero-canvas-wrap">
-            <FluidBubble />
+            {/* Adaptive Rendering: Mount 3D WebGL FluidBubble on all WebGL-capable devices.
+                Pure CSS/SVG fallback is only used during pre-hydration or on non-WebGL environments. */}
+            {!isMounted || !capabilities.canUseWebGL ? (
+              <FluidBubbleFallback />
+            ) : (
+              <FluidBubbleErrorBoundary fallback={<FluidBubbleFallback />}>
+                <FluidBubble isVisible={isHeroVisible} tier={tier} />
+              </FluidBubbleErrorBoundary>
+            )}
           </div>
 
           {/* Scroll indicator */}
@@ -296,6 +292,7 @@ export default function Home() {
             activeSlide={activeSlide}
             scrollContainerRef={scrollRef}
             sectionRef={craftRef}
+            tier={tier}
           />
         </section>
 
@@ -303,7 +300,7 @@ export default function Home() {
         <AboutSection isEmbedded={true} />
       </div>
 
-      {/* macOS style boot screen overlay */}
+      {/* Accelerated Canvas boot screen overlay */}
       {isBooting && <SnakeBootScreen onComplete={handleBootComplete} />}
     </>
   );

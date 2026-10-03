@@ -1,13 +1,20 @@
 @import "tailwindcss";
 
 @theme inline {
-  --color-background: #ebdffd;
+  --color-paper: #f8f9fa;
+  --color-ink: #f4f4f7;
+  --color-background: #f8f9fa;
   --color-foreground: #18181b;
 }
 
 /* ========== CSS CUSTOM PROPERTIES ========== */
 :root {
   --scroll-progress: 0;
+  --paper: #f8f9fa;
+  --ink: #f4f4f7;
+  --ink-dark: #18181b;
+  --pure-white: #ffffff;
+  --base-text-dark: #f4f4f6;
 }
 
 @layer base {
@@ -22,7 +29,7 @@
   }
 
   body {
-    color: #ffffff;
+    color: var(--ink);
     font-family:
       var(--font-inter),
       -apple-system,
@@ -92,7 +99,7 @@
   width: 100%;
   height: 100vh;
   overflow: hidden;
-  background: radial-gradient(circle at 50% 50%, #faf7ff 0%, #ebdffd 75%, #dfccfa 100%);
+  background: var(--paper); /* Purely single color #f8f9fa */
 }
 
 @media (pointer: coarse) {
@@ -217,7 +224,7 @@
   color: color-mix(
     in oklch,
     rgba(24, 24, 27, 0.45) calc((1 - var(--scroll-progress)) * 100%),
-    rgba(255, 255, 255, 0.35)
+    rgba(244, 244, 247, 0.45)
   );
 }
 
@@ -226,7 +233,7 @@
   color: color-mix(
     in oklch,
     rgba(24, 24, 27, 1) calc((1 - var(--scroll-progress)) * 100%),
-    rgba(255, 255, 255, 0.9)
+    var(--pure-white)
   );
 }
 
@@ -234,7 +241,7 @@
   color: color-mix(
     in oklch,
     rgba(24, 24, 27, 1) calc((1 - var(--scroll-progress)) * 100%),
-    rgba(255, 255, 255, 0.9)
+    var(--ink)
   );
 }
 
@@ -483,7 +490,7 @@ html.has-custom-cursor .scroll-indicator {
   font-weight: 850;
   line-height: 0.95;
   letter-spacing: -0.04em;
-  color: #ffffff;
+  color: var(--ink);
   font-family: var(--font-inter), sans-serif;
 }
 
@@ -498,7 +505,7 @@ html.has-custom-cursor .scroll-indicator {
 }
 
 .craft-header-counter .current {
-  color: #ffffff;
+  color: var(--pure-white);
   font-size: 19px;
   font-weight: 600;
 }
@@ -591,7 +598,7 @@ html.has-custom-cursor .scroll-indicator {
   font-weight: 800;
   line-height: 1;
   margin: 12px 0 20px 0;
-  color: #ffffff;
+  color: var(--ink);
   letter-spacing: -0.02em;
 }
 
@@ -629,18 +636,18 @@ html.has-custom-cursor .scroll-indicator {
   font-size: 12px;
   font-weight: 600;
   letter-spacing: 0.12em;
-  color: #ffffff;
+  color: var(--ink);
   text-decoration: none;
   padding-bottom: 4px;
-  border-bottom: 1.5px solid rgba(255, 255, 255, 0.25);
+  border-bottom: 1.5px solid rgba(244, 244, 247, 0.25);
   transition:
     border-color 0.2s cubic-bezier(0.16, 1, 0.3, 1),
     color 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .project-link:hover {
-  border-color: #ffffff;
-  color: #ffffff;
+  border-color: var(--pure-white);
+  color: var(--pure-white);
 }
 
 .project-link .arrow {
@@ -938,7 +945,7 @@ html.has-custom-cursor .scroll-indicator {
   position: relative;
   width: 100%;
   background: #09090b;
-  color: #ffffff;
+  color: var(--ink);
   content-visibility: auto;
   contain-intrinsic-size: 1000px;
 }
@@ -1052,7 +1059,7 @@ html.has-custom-cursor .scroll-indicator {
 
 .about-location-value {
   font-size: 14px;
-  color: #ffffff;
+  color: var(--ink);
   font-weight: 400;
 }
 
@@ -1124,7 +1131,7 @@ html.has-custom-cursor .scroll-indicator {
   font-size: 16px;
   font-weight: 800;
   letter-spacing: -0.02em;
-  color: #ffffff;
+  color: var(--ink);
 }
 
 .footer-tagline {
@@ -1275,7 +1282,7 @@ html.has-custom-cursor .scroll-indicator {
   }
 
   .nav-link.active {
-    color: #ffffff !important;
+    color: var(--pure-white) !important;
     background: rgba(255, 255, 255, 0.1);
     box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.15);
   }
@@ -1505,7 +1512,7 @@ a.cv-download-btn:active, a.craft-card-secondary-btn:active, a.project-link:acti
 .subpage-root {
   background: #09090b;
   min-height: 100vh;
-  color: #ffffff;
+  color: var(--ink);
   padding: 8vh 8% 10vh 18%;
   position: relative;
   overflow-x: hidden;
@@ -1528,7 +1535,7 @@ a.cv-download-btn:active, a.craft-card-secondary-btn:active, a.project-link:acti
   font-size: clamp(2.5rem, 5vw, 4.2rem);
   font-weight: 850;
   letter-spacing: -0.04em;
-  color: #ffffff;
+  color: var(--ink);
   line-height: 0.95;
   margin: 0;
 }
@@ -1554,7 +1561,7 @@ a.cv-download-btn:active, a.craft-card-secondary-btn:active, a.project-link:acti
   border-radius: 9999px;
   background: rgba(255, 255, 255, 0.08);
   border: 1px solid rgba(255, 255, 255, 0.16);
-  color: #ffffff;
+  color: var(--ink);
   font-size: 12px;
   font-weight: 600;
   letter-spacing: 0.08em;
@@ -1569,8 +1576,8 @@ a.cv-download-btn:active, a.craft-card-secondary-btn:active, a.project-link:acti
 
 .cv-download-btn:hover,
 .craft-card-primary-btn:hover {
-  background: #ffffff;
-  border-color: #ffffff;
+  background: var(--pure-white);
+  border-color: var(--pure-white);
   color: #09090b;
   transform: translateY(-1px);
   box-shadow: 0 6px 20px rgba(255, 255, 255, 0.18);
@@ -1586,7 +1593,7 @@ a.cv-download-btn:active, a.craft-card-secondary-btn:active, a.project-link:acti
   border-radius: 9999px;
   background: rgba(255, 255, 255, 0.08);
   border: 1px solid rgba(255, 255, 255, 0.16);
-  color: #ffffff;
+  color: var(--ink);
   font-size: 12px;
   font-weight: 600;
   letter-spacing: 0.08em;
@@ -1635,7 +1642,7 @@ a.cv-download-btn:active, a.craft-card-secondary-btn:active, a.project-link:acti
 .cv-role {
   font-size: 18px;
   font-weight: 700;
-  color: #ffffff;
+  color: var(--ink);
   margin-bottom: 4px;
 }
 
@@ -1796,7 +1803,7 @@ a.cv-download-btn:active, a.craft-card-secondary-btn:active, a.project-link:acti
   font-size: 10px;
   font-weight: 600;
   letter-spacing: 0.08em;
-  color: #ffffff;
+  color: var(--ink);
   text-transform: uppercase;
 }
 
@@ -1839,7 +1846,7 @@ a.cv-download-btn:active, a.craft-card-secondary-btn:active, a.project-link:acti
 .craft-card-title {
   font-size: 22px;
   font-weight: 700;
-  color: #ffffff;
+  color: var(--ink);
   margin-bottom: 10px;
 }
 
@@ -1912,7 +1919,7 @@ a.cv-download-btn:active, a.craft-card-secondary-btn:active, a.project-link:acti
 
 .craft-card-secondary-btn:hover {
   background: rgba(255, 255, 255, 0.1);
-  color: #ffffff;
+  color: var(--pure-white);
   border-color: rgba(255, 255, 255, 0.2);
 }
 
@@ -1947,7 +1954,7 @@ a.cv-download-btn:active, a.craft-card-secondary-btn:active, a.project-link:acti
 .lab-hud-val {
   font-size: 14px;
   font-weight: 700;
-  color: #ffffff;
+  color: var(--ink);
   font-variant-numeric: tabular-nums;
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
 }
@@ -2011,7 +2018,7 @@ a.cv-download-btn:active, a.craft-card-secondary-btn:active, a.project-link:acti
 .lab-game-overlay-title {
   font-size: 22px;
   font-weight: 750;
-  color: #ffffff;
+  color: var(--ink);
   letter-spacing: 0.04em;
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
 }
@@ -2020,7 +2027,7 @@ a.cv-download-btn:active, a.craft-card-secondary-btn:active, a.project-link:acti
   min-height: 38px;
   padding: 8px 24px;
   border-radius: 9999px;
-  background: #ffffff;
+  background: var(--ink);
   color: #09090b;
   font-size: 11px;
   font-weight: 700;

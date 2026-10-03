@@ -354,8 +354,8 @@ function BubbleMesh({ interactionRef, isVisible, tier }: BubbleMeshProps) {
       if (typeof mat.iridescence === "number")
         mat.iridescence = THREE.MathUtils.lerp(0.35, 0.75, h);
 
-      const r = THREE.MathUtils.lerp(0.98, 0.88, h);
-      const g = THREE.MathUtils.lerp(0.969, 0.82, h);
+      const r = THREE.MathUtils.lerp(1.0, 0.96, h);
+      const g = THREE.MathUtils.lerp(1.0, 0.96, h);
       const b = THREE.MathUtils.lerp(1.0, 0.98, h);
       const matColor = mat.color as THREE.Color | undefined;
       if (matColor?.setRGB) matColor.setRGB(r, g, b);
@@ -382,17 +382,17 @@ function BubbleMesh({ interactionRef, isVisible, tier }: BubbleMeshProps) {
             clearcoatRoughness={0.0}
             thickness={0.03}
             ior={1.06}
-            chromaticAberration={0.025}
+            chromaticAberration={0.02}
             anisotropy={0.1}
             anisotropicBlur={0}
             distortion={0.1}
             distortionScale={0.2}
             temporalDistortion={0.0}
-            color="#faf7ff"
-            attenuationColor="#f3e8ff"
+            color="#ffffff"
+            attenuationColor="#f8f9fa"
             attenuationDistance={100}
-            iridescence={0.4}
-            iridescenceIOR={1.4}
+            iridescence={0.3}
+            iridescenceIOR={1.3}
             iridescenceThicknessRange={[100, 400]}
             toneMapped={false}
             transparent={true}
@@ -469,32 +469,12 @@ function BackgroundLines() {
   );
 }
 
-/* ─── Background Gradient Plane ─── */
+/* ─── Background Solid Plane (#f8f9fa) ─── */
 function BackgroundGradient() {
   return (
-    <mesh position={[0, 0, -8]} scale={[25, 25, 1]}>
+    <mesh position={[0, 0, -8]} scale={[50, 50, 1]}>
       <planeGeometry />
-      <shaderMaterial
-        vertexShader={`
-          varying vec2 vUv;
-          void main() {
-            vUv = uv;
-            gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-          }
-        `}
-        fragmentShader={`
-          varying vec2 vUv;
-          void main() {
-            vec2 uv = vUv - 0.5;
-            float dist = length(uv) * 1.414;
-            vec3 color1 = vec3(0.984, 0.976, 1.0);
-            vec3 color2 = vec3(0.922, 0.875, 0.992);
-            vec3 color = mix(color1, color2, smoothstep(0.0, 1.0, dist));
-            gl_FragColor = vec4(color, 1.0);
-          }
-        `}
-        depthWrite={false}
-      />
+      <meshBasicMaterial color="#f8f9fa" depthWrite={false} />
     </mesh>
   );
 }
@@ -691,14 +671,15 @@ export default function FluidBubble({ isVisible = true, tier: tierProp }: FluidB
           antialias: true,
           powerPreference: "high-performance",
         }}
-        style={{ position: "absolute", inset: 0 }}
+        style={{ position: "absolute", inset: 0, background: "#f8f9fa" }}
         dpr={isMobile ? [1, 1.5] : [1, 2]}
       >
+        <color attach="background" args={["#f8f9fa"]} />
         <BackgroundGradient />
         <BackgroundLines />
 
         <Environment preset="studio" environmentIntensity={1.8} />
-        <ambientLight intensity={0.6} color="#faf5ff" />
+        <ambientLight intensity={0.6} color="#ffffff" />
         <directionalLight
           position={[0.2, 0.2, 6]}
           intensity={3.0}
@@ -712,12 +693,12 @@ export default function FluidBubble({ isVisible = true, tier: tierProp }: FluidB
         <directionalLight
           position={[-6, 4, 3]}
           intensity={1.5}
-          color="#f5eefd"
+          color="#ffffff"
         />
         <directionalLight
           position={[0, -5, 3]}
           intensity={0.8}
-          color="#ebdffd"
+          color="#f8f9fa"
         />
 
         <SceneText />

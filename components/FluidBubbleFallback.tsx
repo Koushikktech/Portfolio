@@ -71,7 +71,7 @@ export default function FluidBubbleFallback() {
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        background: "radial-gradient(circle at 50% 50%, #faf7ff 0%, #ebdffd 75%, #dfccfa 100%)",
+        background: "#f8f9fa",
       }}
     >
       {/* Background Architectural Grid Lines (matching Three.js BackgroundLines) */}
@@ -187,12 +187,12 @@ export default function FluidBubbleFallback() {
             inset: "-8px",
             borderRadius: "48% 52% 54% 46% / 46% 50% 50% 54%",
             background:
-              "radial-gradient(circle at 50% 50%, rgba(255, 255, 255, 0.02) 0%, rgba(250, 245, 255, 0.08) 55%, rgba(230, 215, 255, 0.3) 85%, rgba(192, 156, 255, 0.5) 100%)",
+              "radial-gradient(circle at 50% 50%, rgba(255, 255, 255, 0.04) 0%, rgba(248, 249, 250, 0.25) 55%, rgba(230, 232, 236, 0.45) 85%, rgba(210, 214, 220, 0.6) 100%)",
             boxShadow:
-              "0 20px 60px rgba(180, 140, 255, 0.22), inset 0 0 24px rgba(255, 255, 255, 0.7), inset 0 -12px 24px rgba(192, 132, 252, 0.25)",
+              "0 20px 60px rgba(0, 0, 0, 0.08), inset 0 0 24px rgba(255, 255, 255, 0.9), inset 0 -12px 24px rgba(0, 0, 0, 0.04)",
             backdropFilter: "contrast(1.05) brightness(1.03)",
             WebkitBackdropFilter: "contrast(1.05) brightness(1.03)",
-            border: "1.5px solid rgba(255, 255, 255, 0.75)",
+            border: "1.5px solid rgba(255, 255, 255, 0.8)",
             animation: "orb-fluid-morph 8s ease-in-out infinite alternate",
           }}
         />
@@ -213,7 +213,7 @@ export default function FluidBubbleFallback() {
           }}
         />
 
-        {/* Secondary Iridescent Rim Reflection (Lavender / Violet Accent) */}
+        {/* Secondary Glass Rim Reflection */}
         <div
           style={{
             position: "absolute",
@@ -222,7 +222,7 @@ export default function FluidBubbleFallback() {
             width: "30%",
             height: "20%",
             borderRadius: "50%",
-            background: "radial-gradient(ellipse at center, rgba(192, 132, 252, 0.35) 0%, rgba(192, 132, 252, 0) 75%)",
+            background: "radial-gradient(ellipse at center, rgba(255, 255, 255, 0.45) 0%, rgba(255, 255, 255, 0) 75%)",
             filter: "blur(4px)",
             pointerEvents: "none",
           }}

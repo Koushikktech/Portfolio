@@ -187,12 +187,12 @@ export default function FluidBubbleFallback() {
             inset: "-8px",
             borderRadius: "48% 52% 54% 46% / 46% 50% 50% 54%",
             background:
-              "radial-gradient(circle at 50% 50%, rgba(255, 255, 255, 0.04) 0%, rgba(248, 249, 250, 0.25) 55%, rgba(230, 232, 236, 0.45) 85%, rgba(210, 214, 220, 0.6) 100%)",
+              "radial-gradient(circle at 50% 50%, rgba(248, 249, 250, 0.05) 0%, rgba(248, 249, 250, 0.15) 55%, rgba(248, 249, 250, 0.3) 85%, rgba(248, 249, 250, 0.5) 100%)",
             boxShadow:
-              "0 20px 60px rgba(0, 0, 0, 0.08), inset 0 0 24px rgba(255, 255, 255, 0.9), inset 0 -12px 24px rgba(0, 0, 0, 0.04)",
+              "0 20px 60px rgba(0, 0, 0, 0.06), inset 0 0 24px rgba(248, 249, 250, 0.7), inset 0 -12px 24px rgba(24, 24, 27, 0.05)",
             backdropFilter: "contrast(1.05) brightness(1.03)",
             WebkitBackdropFilter: "contrast(1.05) brightness(1.03)",
-            border: "1.5px solid rgba(255, 255, 255, 0.8)",
+            border: "1.5px solid rgba(248, 249, 250, 0.75)",
             animation: "orb-fluid-morph 8s ease-in-out infinite alternate",
           }}
         />
@@ -206,7 +206,7 @@ export default function FluidBubbleFallback() {
             width: "35%",
             height: "22%",
             borderRadius: "50%",
-            background: "radial-gradient(ellipse at center, rgba(255, 255, 255, 0.85) 0%, rgba(255, 255, 255, 0) 80%)",
+            background: "radial-gradient(ellipse at center, rgba(248, 249, 250, 0.85) 0%, rgba(248, 249, 250, 0) 80%)",
             transform: "rotate(-25deg)",
             filter: "blur(2px)",
             pointerEvents: "none",
@@ -222,7 +222,7 @@ export default function FluidBubbleFallback() {
             width: "30%",
             height: "20%",
             borderRadius: "50%",
-            background: "radial-gradient(ellipse at center, rgba(255, 255, 255, 0.45) 0%, rgba(255, 255, 255, 0) 75%)",
+            background: "radial-gradient(ellipse at center, rgba(248, 249, 250, 0.45) 0%, rgba(248, 249, 250, 0) 75%)",
             filter: "blur(4px)",
             pointerEvents: "none",
           }}

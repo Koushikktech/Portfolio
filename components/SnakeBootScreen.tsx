@@ -114,9 +114,9 @@ export default function SnakeBootScreen({ onComplete }: SnakeBootScreenProps) {
           }
         }
       }
-      ctx.fillStyle = "rgba(255, 255, 255, 0.03)";
+      ctx.fillStyle = "rgba(248, 249, 250, 0.03)";
       ctx.fill();
-      ctx.strokeStyle = "rgba(255, 255, 255, 0.05)";
+      ctx.strokeStyle = "rgba(248, 249, 250, 0.05)";
       ctx.lineWidth = 1;
       ctx.stroke();
 
@@ -130,8 +130,8 @@ export default function SnakeBootScreen({ onComplete }: SnakeBootScreenProps) {
         const relPos = segmentCount > 1 ? (pIdx - tailIdx) / (segmentCount - 1) : 1;
         const opacity = 0.15 + Math.pow(relPos, 2.0) * 0.85;
 
-        ctx.fillStyle = `rgba(255, 255, 255, ${opacity})`;
-        ctx.strokeStyle = `rgba(255, 255, 255, ${0.3 + relPos * 0.7})`;
+        ctx.fillStyle = `rgba(248, 249, 250, ${opacity})`;
+        ctx.strokeStyle = `rgba(248, 249, 250, ${0.3 + relPos * 0.7})`;
 
         ctx.beginPath();
         ctx.roundRect(x, y, CELL_SIZE, CELL_SIZE, 3);

@@ -314,7 +314,7 @@ export default function LabPage() {
               vx: (Math.random() - 0.5) * 3,
               vy: -Math.random() * 2 - 1,
               radius: 1.5,
-              color: "#ffffff",
+              color: "#f8f9fa",
               alpha: 0.8,
               decay: 0.05,
             });
@@ -391,7 +391,7 @@ export default function LabPage() {
       ctx.clearRect(0, 0, width, height);
 
       // Background subtle grid lines
-      ctx.strokeStyle = "rgba(255, 255, 255, 0.03)";
+      ctx.strokeStyle = "rgba(248, 249, 250, 0.03)";
       ctx.lineWidth = 1;
       const gridSize = 32;
       for (let x = 0; x < width; x += gridSize) {
@@ -439,8 +439,8 @@ export default function LabPage() {
       }
 
       // Render Paddle
-      ctx.fillStyle = "#ffffff";
-      ctx.shadowColor = "rgba(255, 255, 255, 0.35)";
+      ctx.fillStyle = "#f8f9fa";
+      ctx.shadowColor = "rgba(248, 249, 250, 0.35)";
       ctx.shadowBlur = 10;
       ctx.beginPath();
       ctx.roundRect(paddle.x, paddle.y, paddle.width, paddle.height, 5);

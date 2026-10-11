@@ -28,7 +28,7 @@ export default function AboutSection({
   isEmbedded = false,
 }: AboutSectionProps) {
   const techSkills = [
-    { name: "Next.js / React", icon: SiNextdotjs, color: "#ffffff" },
+    { name: "Next.js / React", icon: SiNextdotjs, color: "#f8f9fa" },
     { name: "HTML", icon: SiHtml5, color: "#E34F26" },
     { name: "CSS / Tailwind", icon: SiTailwindcss, color: "#06B6D4" },
     { name: "JS / TS", icon: SiJavascript, color: "#F7DF1E" },

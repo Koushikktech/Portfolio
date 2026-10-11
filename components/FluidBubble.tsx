@@ -472,7 +472,7 @@ function BackgroundLines() {
 /* ─── Background Solid Plane ─── */
 function BackgroundPlane() {
   return (
-    <mesh position={[0, 0, -8]} scale={[35, 35, 1]}>
+    <mesh position={[0, 0, -8]} scale={[70, 70, 1]}>
       <planeGeometry />
       <meshBasicMaterial color="#f8f9fa" depthWrite={false} />
     </mesh>
@@ -671,7 +671,7 @@ export default function FluidBubble({ isVisible = true, tier: tierProp }: FluidB
           antialias: true,
           powerPreference: "high-performance",
         }}
-        style={{ position: "absolute", inset: 0 }}
+        style={{ position: "absolute", inset: 0, background: "#f8f9fa" }}
         dpr={isMobile ? [1, 1.5] : [1, 2]}
       >
         <color attach="background" args={["#f8f9fa"]} />

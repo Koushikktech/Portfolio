@@ -114,9 +114,9 @@ export default function SnakeBootScreen({ onComplete }: SnakeBootScreenProps) {
           }
         }
       }
-      ctx.fillStyle = "rgba(248, 249, 250, 0.03)";
+      ctx.fillStyle = "rgba(24, 24, 27, 0.04)";
       ctx.fill();
-      ctx.strokeStyle = "rgba(248, 249, 250, 0.05)";
+      ctx.strokeStyle = "rgba(24, 24, 27, 0.07)";
       ctx.lineWidth = 1;
       ctx.stroke();
 
@@ -128,10 +128,10 @@ export default function SnakeBootScreen({ onComplete }: SnakeBootScreenProps) {
         const y = pt.y * (CELL_SIZE + GAP);
 
         const relPos = segmentCount > 1 ? (pIdx - tailIdx) / (segmentCount - 1) : 1;
-        const opacity = 0.15 + Math.pow(relPos, 2.0) * 0.85;
+        const opacity = 0.2 + Math.pow(relPos, 2.0) * 0.75;
 
-        ctx.fillStyle = `rgba(248, 249, 250, ${opacity})`;
-        ctx.strokeStyle = `rgba(248, 249, 250, ${0.3 + relPos * 0.7})`;
+        ctx.fillStyle = `rgba(24, 24, 27, ${opacity})`;
+        ctx.strokeStyle = `rgba(24, 24, 27, ${0.4 + relPos * 0.6})`;
 
         ctx.beginPath();
         ctx.roundRect(x, y, CELL_SIZE, CELL_SIZE, 3);

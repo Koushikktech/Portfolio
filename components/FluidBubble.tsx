@@ -354,9 +354,9 @@ function BubbleMesh({ interactionRef, isVisible, tier }: BubbleMeshProps) {
       if (typeof mat.iridescence === "number")
         mat.iridescence = THREE.MathUtils.lerp(0.35, 0.75, h);
 
-      const r = THREE.MathUtils.lerp(0.98, 0.88, h);
-      const g = THREE.MathUtils.lerp(0.969, 0.82, h);
-      const b = THREE.MathUtils.lerp(1.0, 0.98, h);
+      const r = THREE.MathUtils.lerp(0.9725, 0.95, h);
+      const g = THREE.MathUtils.lerp(0.9765, 0.95, h);
+      const b = THREE.MathUtils.lerp(0.9804, 0.96, h);
       const matColor = mat.color as THREE.Color | undefined;
       if (matColor?.setRGB) matColor.setRGB(r, g, b);
 
@@ -378,21 +378,21 @@ function BubbleMesh({ interactionRef, isVisible, tier }: BubbleMeshProps) {
             resolution={tier === "high" ? 1024 : 512}
             transmission={1.0}
             roughness={0.0}
-            clearcoat={1.0}
+            clearcoat={0.3}
             clearcoatRoughness={0.0}
-            thickness={0.03}
-            ior={1.06}
-            chromaticAberration={0.025}
+            thickness={0.02}
+            ior={1.05}
+            chromaticAberration={0.02}
             anisotropy={0.1}
             anisotropicBlur={0}
-            distortion={0.1}
-            distortionScale={0.2}
+            distortion={0.08}
+            distortionScale={0.15}
             temporalDistortion={0.0}
             color="#f8f9fa"
             attenuationColor="#f8f9fa"
             attenuationDistance={100}
-            iridescence={0.4}
-            iridescenceIOR={1.4}
+            iridescence={0.2}
+            iridescenceIOR={1.3}
             iridescenceThicknessRange={[100, 400]}
             toneMapped={false}
             transparent={true}
@@ -474,7 +474,7 @@ function BackgroundPlane() {
   return (
     <mesh position={[0, 0, -8]} scale={[70, 70, 1]}>
       <planeGeometry />
-      <meshBasicMaterial color="#f8f9fa" depthWrite={false} />
+      <meshBasicMaterial color="#f8f9fa" toneMapped={false} depthWrite={false} />
     </mesh>
   );
 }
@@ -670,6 +670,10 @@ export default function FluidBubble({ isVisible = true, tier: tierProp }: FluidB
           alpha: true,
           antialias: true,
           powerPreference: "high-performance",
+          toneMapping: THREE.NoToneMapping,
+        }}
+        onCreated={({ gl }) => {
+          gl.toneMapping = THREE.NoToneMapping;
         }}
         style={{ position: "absolute", inset: 0, background: "#f8f9fa" }}
         dpr={isMobile ? [1, 1.5] : [1, 2]}
@@ -678,26 +682,32 @@ export default function FluidBubble({ isVisible = true, tier: tierProp }: FluidB
         <BackgroundPlane />
         <BackgroundLines />
 
-        <Environment preset="studio" environmentIntensity={1.6} />
-        <ambientLight intensity={0.7} color="#f8f9fa" />
+        <Environment background={false}>
+          <mesh scale={100}>
+            <sphereGeometry args={[1, 32, 32]} />
+            <meshBasicMaterial color="#f8f9fa" side={THREE.BackSide} toneMapped={false} />
+          </mesh>
+        </Environment>
+
+        <ambientLight intensity={1.2} color="#f8f9fa" />
         <directionalLight
           position={[0.2, 0.2, 6]}
-          intensity={2.8}
+          intensity={3.0}
           color="#f8f9fa"
         />
         <directionalLight
           position={[3, 10, 5]}
-          intensity={3.2}
+          intensity={3.5}
           color="#f8f9fa"
         />
         <directionalLight
           position={[-6, 4, 3]}
-          intensity={1.2}
+          intensity={1.5}
           color="#f8f9fa"
         />
         <directionalLight
           position={[0, -5, 3]}
-          intensity={0.6}
+          intensity={0.8}
           color="#f8f9fa"
         />
 
